@@ -1,9 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { assertTestDatabaseUrls } from './test-database.js';
 
-// Corre una vez antes de todos los E2E: aplica las migraciones pendientes a
-// la base de test. `migrate deploy` y no `migrate reset`, porque reset borra
-// el schema public y con él los permisos por defecto de los roles.
+// deploy y no reset: reset borra el schema public y con él los permisos por
+// defecto de los roles.
 export default function setup() {
   assertTestDatabaseUrls();
   try {

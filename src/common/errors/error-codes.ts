@@ -1,9 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
 
-// Catálogo de códigos de error de la API. El `code` es estable: el front
-// decide qué mostrar en base a él. El `message` es un texto de respaldo en
-// español. Los códigos de dominio (COOLDOWN_ACTIVE, TOKEN_EXPIRED, …) se
-// agregan en la tarea que los empieza a usar.
 export const errorCatalog = {
   BAD_REQUEST: {
     status: HttpStatus.BAD_REQUEST,

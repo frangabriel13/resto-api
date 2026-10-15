@@ -3,8 +3,6 @@ import { AppModule } from './../src/app.module.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
 import { createMigratorClient } from './setup/test-database.js';
 
-// Verifica el setup de los E2E con una tabla temporal creada por el migrador,
-// como lo hará una migración real.
 describe('Base de test (e2e)', () => {
   const migrator = createMigratorClient();
   let moduleRef: TestingModule;
@@ -33,8 +31,7 @@ describe('Base de test (e2e)', () => {
     expect(row?.db).toBe('resto_club_test');
   });
 
-  // Los dos tests que siguen van juntos y en este orden: el primero deja una
-  // fila y el segundo comprueba que la limpieza entre tests la borró.
+  // Dependen del orden: el primero deja una fila para que el segundo la busque.
   it('resto_app puede escribir en las tablas que crea el migrador', async () => {
     await prisma.$executeRaw`INSERT INTO e2e_setup_check (note) VALUES ('x')`;
     const [row] = await prisma.$queryRaw<{ count: number }[]>`

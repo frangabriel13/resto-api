@@ -11,8 +11,6 @@ import type { ApiError } from './api-error.schema.js';
 import { AppException } from './app.exception.js';
 import { errorCatalog, type ErrorCode } from './error-codes.js';
 
-// Convierte cualquier excepción al formato `ApiError`. Los errores que no son
-// HTTP se responden como INTERNAL_ERROR sin detalles y se loguean completos.
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
@@ -40,9 +38,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ...(exception.details && { details: exception.details }),
       };
     }
-    // Excepciones propias de Nest o de librerías (ruta inexistente, JSON mal
-    // formado, throttler, …): se mapean a un código genérico con el mensaje
-    // en español del catálogo.
     if (exception instanceof HttpException) {
       const statusCode = exception.getStatus();
       const code = codeForStatus(statusCode);

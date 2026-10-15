@@ -10,8 +10,6 @@ const roleQuery = (client: PrismaService | PrismaAdminService) =>
     SELECT rolname AS role, rolsuper AS superuser, rolbypassrls AS "bypassRls"
     FROM pg_roles WHERE rolname = current_user`;
 
-// RLS depende de que cada cliente use el rol correcto: si el de runtime
-// pudiera saltearse RLS, las políticas no protegerían nada.
 describe('Clientes de Prisma (e2e)', () => {
   let moduleRef: TestingModule;
 
