@@ -1,0 +1,50 @@
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '../../src/generated/prisma/client.js';
+
+const URL_VARS = [
+  'DATABASE_URL',
+  'DATABASE_ADMIN_URL',
+  'MIGRATE_DATABASE_URL',
+] as const;
+
+// Freno de seguridad: los E2E vacían la base, así que se niegan a correr si
+// alguna URL no apunta a una base terminada en `_test`.
+export function assertTestDatabaseUrls() {
+  for (const name of URL_VARS) {
+    const value = process.env[name];
+    const database = value ? new URL(value).pathname.slice(1) : undefined;
+    if (!database?.endsWith('_test')) {
+      throw new Error(
+        `${name} tiene que apuntar a una base terminada en "_test" ` +
+          `(ahora: ${database ?? 'sin definir'}). Revisá .env.test.`,
+      );
+    }
+  }
+}
+
+// Conexión como `resto_migrator` (dueño de las tablas), para poder vaciarlas
+// sin depender de los permisos ni de RLS.
+export function createMigratorClient() {
+  return new PrismaClient({
+    adapter: new PrismaPg({
+      connectionString: process.env.MIGRATE_DATABASE_URL,
+    }),
+  });
+}
+
+// Vacía todas las tablas del schema public salvo el historial de migraciones.
+export async function resetDatabase(client: PrismaClient) {
+  await client.$executeRawUnsafe(`
+    DO $$
+    DECLARE tables text;
+    BEGIN
+      SELECT string_agg(format('%I.%I', schemaname, tablename), ', ')
+        INTO tables
+        FROM pg_tables
+        WHERE schemaname = 'public' AND tablename <> '_prisma_migrations';
+      IF tables IS NOT NULL THEN
+        EXECUTE 'TRUNCATE TABLE ' || tables || ' RESTART IDENTITY CASCADE';
+      END IF;
+    END $$;
+  `);
+}

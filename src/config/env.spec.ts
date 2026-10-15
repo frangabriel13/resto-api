@@ -1,0 +1,54 @@
+import { validateEnv } from './env.js';
+
+const validEnv = {
+  DATABASE_URL: 'postgresql://resto_app:secreto-app@localhost:5434/resto_club',
+  DATABASE_ADMIN_URL:
+    'postgresql://resto_app_admin:secreto-admin@localhost:5434/resto_club',
+};
+
+describe('validateEnv', () => {
+  it('aplica los valores por defecto', () => {
+    const env = validateEnv(validEnv);
+    expect(env.NODE_ENV).toBe('development');
+    expect(env.PORT).toBe(3001);
+  });
+
+  it('convierte PORT a número', () => {
+    expect(validateEnv({ ...validEnv, PORT: '4000' }).PORT).toBe(4000);
+  });
+
+  it('descarta variables que no están en el schema', () => {
+    const env = validateEnv({ ...validEnv, PATH: '/usr/bin' });
+    expect(env).not.toHaveProperty('PATH');
+  });
+
+  it('falla si falta una URL de base', () => {
+    expect(() => validateEnv({ DATABASE_URL: validEnv.DATABASE_URL })).toThrow(
+      /DATABASE_ADMIN_URL/,
+    );
+  });
+
+  it('falla si la URL no es de Postgres', () => {
+    expect(() =>
+      validateEnv({ ...validEnv, DATABASE_URL: 'mysql://x@localhost/db' }),
+    ).toThrow(/DATABASE_URL: tiene que ser una URL postgresql/);
+  });
+
+  it('falla con un PORT inválido o un NODE_ENV desconocido', () => {
+    expect(() => validateEnv({ ...validEnv, PORT: 'abc' })).toThrow(/PORT/);
+    expect(() => validateEnv({ ...validEnv, NODE_ENV: 'staging' })).toThrow(
+      /NODE_ENV/,
+    );
+  });
+
+  it('no muestra los valores en el mensaje de error', () => {
+    try {
+      validateEnv({ ...validEnv, DATABASE_URL: 'mysql://u:clave@h/db' });
+      expect.unreachable();
+    } catch (error) {
+      const message = (error as Error).message;
+      expect(message).not.toContain('clave');
+      expect(message).not.toContain('secreto');
+    }
+  });
+});
