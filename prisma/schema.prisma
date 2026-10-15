@@ -1,13 +1,356 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+enum MerchantStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ENDED
+
+  @@map("merchant_status")
+}
+
+enum StaffRole {
+  OWNER
+  EMPLOYEE
+
+  @@map("staff_role")
+}
+
+model Merchant {
+  id                   String         @id @default(uuid(7)) @db.Uuid
+  name                 String
+  slug                 String         @unique
+  logoUrl              String?        @map("logo_url")
+  primaryColor         String?        @map("primary_color")
+  secondaryColor       String?        @map("secondary_color")
+  googleReviewUrl      String?        @map("google_review_url")
+  stampCooldownMinutes Int            @default(60) @map("stamp_cooldown_minutes")
+  status               MerchantStatus @default(DRAFT)
+  createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  staffMemberships StaffMembership[]
+  memberships      Membership[]
+  pieces           Piece[]
+  rewardRules      RewardRule[]
+  stamps           Stamp[]
+  redemptions      Redemption[]
+  auditEvents      AuditEvent[]
+
+  @@map("merchants")
+}
+
+model StaffUser {
+  id                 String   @id @default(uuid(7)) @db.Uuid
+  // En minúsculas: lo normaliza la API.
+  email              String   @unique
+  passwordHash       String   @map("password_hash")
+  name               String
+  mustChangePassword Boolean  @default(true) @map("must_change_password")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  memberships         StaffMembership[]
+  sessions            StaffSession[]
+  passwordResetTokens PasswordResetToken[]
+
+  @@map("staff_users")
+}
+
+model StaffMembership {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  staffUserId String    @map("staff_user_id") @db.Uuid
+  merchantId  String    @map("merchant_id") @db.Uuid
+  role        StaffRole
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  staffUser StaffUser @relation(fields: [staffUserId], references: [id])
+  merchant  Merchant  @relation(fields: [merchantId], references: [id])
+
+  sessions             StaffSession[]
+  grantedStamps        Stamp[]        @relation("StampGrantedBy")
+  voidedStamps         Stamp[]        @relation("StampVoidedBy")
+  confirmedRedemptions Redemption[]   @relation("RedemptionConfirmedBy")
+  voidedRedemptions    Redemption[]   @relation("RedemptionVoidedBy")
+
+  @@unique([staffUserId, merchantId])
+  @@index([merchantId])
+  @@map("staff_memberships")
+}
+
+model StaffSession {
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  staffUserId        String    @map("staff_user_id") @db.Uuid
+  selectedMerchantId String?   @map("selected_merchant_id") @db.Uuid
+  tokenHash          String    @unique @map("token_hash")
+  userAgent          String?   @map("user_agent")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastUsedAt         DateTime  @default(now()) @map("last_used_at") @db.Timestamptz(3)
+  expiresAt          DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt          DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  staffUser        StaffUser        @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+  selectedMerchant StaffMembership? @relation(fields: [staffUserId, selectedMerchantId], references: [staffUserId, merchantId])
+
+  @@index([staffUserId])
+  @@map("staff_sessions")
+}
+
+model PasswordResetToken {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  staffUserId String    @map("staff_user_id") @db.Uuid
+  tokenHash   String    @unique @map("token_hash")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(3)
+  consumedAt  DateTime? @map("consumed_at") @db.Timestamptz(3)
+
+  staffUser StaffUser @relation(fields: [staffUserId], references: [id], onDelete: Cascade)
+
+  @@index([staffUserId])
+  @@map("password_reset_tokens")
+}
+
+model PlatformAdmin {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  sessions PlatformAdminSession[]
+
+  @@map("platform_admins")
+}
+
+model PlatformAdminSession {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  platformAdminId String    @map("platform_admin_id") @db.Uuid
+  tokenHash       String    @unique @map("token_hash")
+  userAgent       String?   @map("user_agent")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastUsedAt      DateTime  @default(now()) @map("last_used_at") @db.Timestamptz(3)
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  platformAdmin PlatformAdmin @relation(fields: [platformAdminId], references: [id], onDelete: Cascade)
+
+  @@index([platformAdminId])
+  @@map("platform_admin_sessions")
+}
+
+model Customer {
+  id              String    @id @default(uuid(7)) @db.Uuid
+  name            String?
+  phoneE164       String?   @unique @map("phone_e164")
+  phoneVerifiedAt DateTime? @map("phone_verified_at") @db.Timestamptz(3)
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  memberships Membership[]
+  sessions    CustomerSession[]
+
+  @@map("customers")
+}
+
+model Membership {
+  id                        String    @id @default(uuid(7)) @db.Uuid
+  customerId                String    @map("customer_id") @db.Uuid
+  merchantId                String    @map("merchant_id") @db.Uuid
+  currentCycle              Int       @default(1) @map("current_cycle")
+  currentCycleRewardRuleId  String    @map("current_cycle_reward_rule_id") @db.Uuid
+  joinedViaPieceId          String?   @map("joined_via_piece_id") @db.Uuid
+  marketingConsent          Boolean   @default(false) @map("marketing_consent")
+  marketingConsentAt        DateTime? @map("marketing_consent_at") @db.Timestamptz(3)
+  marketingConsentRevokedAt DateTime? @map("marketing_consent_revoked_at") @db.Timestamptz(3)
+  joinedAt                  DateTime  @default(now()) @map("joined_at") @db.Timestamptz(3)
+  leftAt                    DateTime? @map("left_at") @db.Timestamptz(3)
+  updatedAt                 DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  customer               Customer   @relation(fields: [customerId], references: [id])
+  merchant               Merchant   @relation(fields: [merchantId], references: [id])
+  currentCycleRewardRule RewardRule @relation(fields: [currentCycleRewardRuleId, merchantId], references: [id, merchantId])
+  joinedViaPiece         Piece?     @relation(fields: [joinedViaPieceId, merchantId], references: [id, merchantId])
+
+  stamps      Stamp[]
+  redemptions Redemption[]
+
+  @@unique([customerId, merchantId])
+  @@unique([id, merchantId])
+  @@index([merchantId, joinedAt])
+  @@map("memberships")
+}
+
+model CustomerSession {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  customerId String    @map("customer_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash")
+  userAgent  String?   @map("user_agent")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastUsedAt DateTime  @default(now()) @map("last_used_at") @db.Timestamptz(3)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("customer_sessions")
+}
+
+// Sin FK a Customer: el código se pide antes de saber si la cuenta existe.
+model OtpChallenge {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  phoneE164  String    @map("phone_e164")
+  codeHash   String    @map("code_hash")
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(3)
+  consumedAt DateTime? @map("consumed_at") @db.Timestamptz(3)
+
+  @@index([phoneE164, createdAt])
+  @@map("otp_challenges")
+}
+
+enum PieceType {
+  NFC_QR
+
+  @@map("piece_type")
+}
+
+enum StampSource {
+  QR_SCAN
+  MANUAL
+
+  @@map("stamp_source")
+}
+
+enum AuditActorType {
+  STAFF
+  CUSTOMER
+  PLATFORM_ADMIN
+  SYSTEM
+
+  @@map("audit_actor_type")
+}
+
+model Piece {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  merchantId String    @map("merchant_id") @db.Uuid
+  publicCode String    @unique @map("public_code")
+  type       PieceType @default(NFC_QR)
+  label      String
+  active     Boolean   @default(true)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  merchant          Merchant     @relation(fields: [merchantId], references: [id])
+  joinedMemberships Membership[]
+
+  @@unique([id, merchantId])
+  @@index([merchantId])
+  @@map("pieces")
+}
+
+model RewardRule {
+  id                String   @id @default(uuid(7)) @db.Uuid
+  merchantId        String   @map("merchant_id") @db.Uuid
+  version           Int
+  stampsRequired    Int      @map("stamps_required")
+  rewardDescription String   @map("reward_description")
+  conditions        String?
+  active            Boolean
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  merchant         Merchant     @relation(fields: [merchantId], references: [id])
+  cycleMemberships Membership[]
+  redemptions      Redemption[]
+
+  @@unique([merchantId, version])
+  @@unique([id, merchantId])
+  @@unique([merchantId], map: "reward_rules_one_active_per_merchant", where: raw("active"))
+  @@map("reward_rules")
+}
+
+model Stamp {
+  id               String      @id @default(uuid(7)) @db.Uuid
+  merchantId       String      @map("merchant_id") @db.Uuid
+  membershipId     String      @map("membership_id") @db.Uuid
+  cycle            Int
+  grantedByStaffId String      @map("granted_by_staff_id") @db.Uuid
+  source           StampSource
+  cooldownOverride Boolean     @default(false) @map("cooldown_override")
+  idempotencyKey   String      @map("idempotency_key")
+  createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  voidedAt         DateTime?   @map("voided_at") @db.Timestamptz(3)
+  voidedByStaffId  String?     @map("voided_by_staff_id") @db.Uuid
+  voidReason       String?     @map("void_reason")
+
+  merchant   Merchant         @relation(fields: [merchantId], references: [id])
+  membership Membership       @relation(fields: [membershipId, merchantId], references: [id, merchantId])
+  // Los *_staff_id son staff_user_id; la FK contra staff_memberships asegura que sea staff de este comercio.
+  grantedBy  StaffMembership  @relation("StampGrantedBy", fields: [grantedByStaffId, merchantId], references: [staffUserId, merchantId])
+  voidedBy   StaffMembership? @relation("StampVoidedBy", fields: [voidedByStaffId, merchantId], references: [staffUserId, merchantId])
+
+  @@unique([merchantId, idempotencyKey])
+  @@index([membershipId, cycle])
+  @@index([membershipId, createdAt])
+  @@index([merchantId, createdAt])
+  @@map("stamps")
+}
+
+model Redemption {
+  id                 String    @id @default(uuid(7)) @db.Uuid
+  merchantId         String    @map("merchant_id") @db.Uuid
+  membershipId       String    @map("membership_id") @db.Uuid
+  cycle              Int
+  rewardRuleId       String    @map("reward_rule_id") @db.Uuid
+  stampsUsed         Int       @map("stamps_used")
+  carryOver          Int       @map("carry_over")
+  confirmedByStaffId String    @map("confirmed_by_staff_id") @db.Uuid
+  idempotencyKey     String    @map("idempotency_key")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  voidedAt           DateTime? @map("voided_at") @db.Timestamptz(3)
+  voidedByStaffId    String?   @map("voided_by_staff_id") @db.Uuid
+  voidReason         String?   @map("void_reason")
+
+  merchant    Merchant         @relation(fields: [merchantId], references: [id])
+  membership  Membership       @relation(fields: [membershipId, merchantId], references: [id, merchantId])
+  rewardRule  RewardRule       @relation(fields: [rewardRuleId, merchantId], references: [id, merchantId])
+  confirmedBy StaffMembership  @relation("RedemptionConfirmedBy", fields: [confirmedByStaffId, merchantId], references: [staffUserId, merchantId])
+  voidedBy    StaffMembership? @relation("RedemptionVoidedBy", fields: [voidedByStaffId, merchantId], references: [staffUserId, merchantId])
+
+  @@unique([merchantId, idempotencyKey])
+  @@unique([membershipId, cycle], map: "redemptions_one_valid_per_cycle", where: raw("voided_at IS NULL"))
+  @@index([merchantId, createdAt])
+  @@map("redemptions")
+}
+
+// actor_id y entity_id sin FK: apuntan a distintas tablas según el tipo.
+model AuditEvent {
+  id         String         @id @default(uuid(7)) @db.Uuid
+  merchantId String?        @map("merchant_id") @db.Uuid
+  actorType  AuditActorType @map("actor_type")
+  actorId    String?        @map("actor_id") @db.Uuid
+  action     String
+  entityType String         @map("entity_type")
+  entityId   String?        @map("entity_id") @db.Uuid
+  payload    Json           @default("{}")
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  merchant Merchant? @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+
+  @@index([merchantId, createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_events")
 }

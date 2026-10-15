@@ -10,9 +10,6 @@ type SchemaIssue = Parameters<
   NonNullable<StandardSchemaValidationPipeOptions['exceptionFactory']>
 >[0][number];
 
-// Valida los parámetros que declaran `schema` (`@Body({ schema })`,
-// `@Query({ schema })`, …) y responde VALIDATION_ERROR con la lista de
-// problemas en `details.issues`.
 export function createValidationPipe() {
   return new StandardSchemaValidationPipe({
     exceptionFactory: (issues) =>

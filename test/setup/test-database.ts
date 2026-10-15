@@ -7,8 +7,7 @@ const URL_VARS = [
   'MIGRATE_DATABASE_URL',
 ] as const;
 
-// Freno de seguridad: los E2E vacían la base, así que se niegan a correr si
-// alguna URL no apunta a una base terminada en `_test`.
+// Los E2E vacían la base: se niegan a correr fuera de una base `_test`.
 export function assertTestDatabaseUrls() {
   for (const name of URL_VARS) {
     const value = process.env[name];
@@ -22,8 +21,7 @@ export function assertTestDatabaseUrls() {
   }
 }
 
-// Conexión como `resto_migrator` (dueño de las tablas), para poder vaciarlas
-// sin depender de los permisos ni de RLS.
+// Como dueño de las tablas, para vaciarlas sin depender de permisos ni de RLS.
 export function createMigratorClient() {
   return new PrismaClient({
     adapter: new PrismaPg({
@@ -32,7 +30,6 @@ export function createMigratorClient() {
   });
 }
 
-// Vacía todas las tablas del schema public salvo el historial de migraciones.
 export async function resetDatabase(client: PrismaClient) {
   await client.$executeRawUnsafe(`
     DO $$

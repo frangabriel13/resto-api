@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { errorCodes } from './error-codes.js';
 
-// Forma de toda respuesta de error. Se publica en el OpenAPI como `ApiError`.
 export const apiErrorSchema = z
   .object({
     statusCode: z.number().int(),

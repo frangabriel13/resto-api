@@ -5,8 +5,7 @@ const postgresUrl = z.url({
   error: 'tiene que ser una URL postgresql://',
 });
 
-// Variables que necesita la API en runtime. MIGRATE_DATABASE_URL no está acá
-// porque solo la usa el CLI de Prisma (prisma7.config.ts).
+// MIGRATE_DATABASE_URL no va: solo la usa el CLI de Prisma.
 export const envSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
@@ -18,9 +17,7 @@ export const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
-// Para `ConfigModule.forRoot({ validate })`: si falta o está mal alguna
-// variable, la API no arranca. El mensaje nombra las variables pero nunca
-// muestra sus valores (pueden tener contraseñas).
+// El mensaje no incluye los valores: pueden tener contraseñas.
 export function validateEnv(config: Record<string, unknown>): Env {
   const result = envSchema.safeParse(config);
   if (!result.success) {

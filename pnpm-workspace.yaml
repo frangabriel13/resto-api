@@ -1,3 +1,7 @@
 allowBuilds:
   '@prisma/engines': true
   prisma: true
+  # tsx funciona sin el postinstall de esbuild (el binario llega por optionalDependencies).
+  esbuild: false
+  # Telemetría de swagger-ui-dist.
+  '@scarf/scarf': false
