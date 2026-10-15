@@ -1,6 +1,6 @@
 # resto-api
 
-Backend NestJS de FullSync Club. El contexto general del producto (reglas de negocio, modelo de datos, API, seguridad) está en `../CLAUDE.md`; acá va solo lo específico de este repo.
+Backend NestJS de Clubsy. El contexto general del producto (reglas de negocio, modelo de datos, API, seguridad) está en `../CLAUDE.md`; acá va solo lo específico de este repo.
 
 ## Comandos
 
@@ -35,9 +35,12 @@ pnpm admin:create --email <email> --name <n>  # crear un PlatformAdmin (o darle 
 - **Panel** (`src/modules/auth/panel/`, `src/common/tenant/`): los controllers del panel llevan `@Panel()` (sesión de staff, contraseña ya cambiada, comercio seleccionado y transacción por request) y `@Roles('OWNER')` donde corresponda. Los services usan `TenantContext.db` (nunca `PrismaService`) y `TenantContext.scope` (`merchantId`, `role`, `staffUserId`, `merchantStatus`).
   - El filtro por comercio es automático en lecturas, updates y deletes. En los `create` igual hay que pasar `merchantId: scope.merchantId` (lo piden los tipos de Prisma); la extensión rechaza otro valor.
   - No pasan por el filtro: el SQL a mano (`$queryRaw`) y las escrituras anidadas (las cubren las FKs compuestas). Los clientes se leen a través de `membership` (`include: { customer: true }`); `db.customer` falla.
+- **Cliente** (`src/common/customer-scope/`): los controllers de `/me/*` llevan `@CustomerRoute()` y los services usan `CustomerContext.db` y `CustomerContext.customerId`. Las piezas comunes con el panel (AsyncLocalStorage, `set_config` en la transacción, grupos de operaciones de Prisma) están en `src/common/request-scope/`.
 - **Admin:** los controllers de `/admin/*` llevan `@AdminOnly()` y usan `PrismaAdminService`. Las escrituras van en `$transaction` junto con `AuditService.recordAdmin(tx, ...)`.
+- **Secretos:** `SECRET_KEY` es la única clave del servidor. Cada uso deriva su propia subclave con `deriveKey(secret, 'uso')` (`src/common/crypto.ts`); nunca usar la clave directa.
+- **OTP:** el envío va detrás de `OtpSender` (token `OTP_SENDER`). En los E2E se reemplaza con `.overrideProvider(OTP_SENDER).useValue(fake)`. Teléfonos: `normalizeArMobile` y `maskPhone` (`src/modules/customers/phone.ts`).
 - **Auditoría:** las acciones del staff de la regla 11 se registran con `AuditService.record({ action, entityId, payload })` dentro del request del panel (misma transacción: si la acción falla, no queda registro). Las acciones válidas están en `AUDIT_ACTIONS`; una nueva se agrega ahí.
-- **Sesiones** (`src/modules/auth/sessions/`): las rutas de staff fuera del panel (como `/auth/staff/*`) van con `@UseGuards(StaffGuard)` (valida la sesión y bloquea con `PASSWORD_CHANGE_REQUIRED`; `@AllowPendingPasswordChange()` lo exceptúa). Para cliente y admin, `@UseGuards(SessionGuard('customer' | 'admin'))`. La sesión se lee con `@Auth()`. Los logins y logouts llaman a `SessionService.start` / `end` con `@Res({ passthrough: true })`. Sin sesión válida, el guard responde `UNAUTHENTICATED`.
+- **Sesiones** (`src/modules/auth/sessions/`): las rutas de staff fuera del panel (como `/auth/staff/*`) van con `@UseGuards(StaffGuard)` (valida la sesión y bloquea con `PASSWORD_CHANGE_REQUIRED`; `@AllowPendingPasswordChange()` lo exceptúa). Las rutas del cliente llevan `@CustomerOnly()` (sesión válida y cuenta no borrada); las de admin, `@AdminOnly()`. La sesión se lee con `@Auth()`. Los logins y logouts llaman a `SessionService.start` / `end` con `@Res({ passthrough: true })`. Sin sesión válida, el guard responde `UNAUTHENTICATED`.
 - **Límite de intentos:** `ThrottlerModule` está registrado sin aplicarse globalmente; cada ruta sensible lleva `@UseGuards(ThrottlerGuard)` y `@Throttle(...)`. Cuenta en memoria (una sola instancia). La IP del cliente sale de `X-Forwarded-For` porque `main.ts` confía en proxies de red privada (`trust proxy`); revisarlo al definir el hosting. En los E2E que llegan al límite, crear una app por test.
 - Los mensajes de validación de zod están en español (`z.config(z.locales.es())` en `src/common/validation.ts`).
 - **Comentarios:** solo el porqué que el código no dice (una restricción no obvia, un workaround). Nada que repita nombres o narre lo que hace la línea siguiente. Funciones cortas, de una responsabilidad.

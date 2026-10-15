@@ -90,6 +90,19 @@ describe('Login de staff (e2e)', () => {
 
   describe('login', () => {
     it('devuelve la cuenta con sus comercios activos y deja la sesión', async () => {
+      const cafe = await prisma.merchant.findUniqueOrThrow({
+        where: { slug: 'cafe' },
+      });
+      await prisma.rewardRule.create({
+        data: {
+          merchantId: cafe.id,
+          version: 1,
+          stampsRequired: 8,
+          rewardDescription: 'Café',
+          active: true,
+        },
+      });
+
       const res = await login('ana@test.com').expect(200);
 
       expect(res.body.user).toMatchObject({
@@ -98,8 +111,8 @@ describe('Login de staff (e2e)', () => {
         mustChangePassword: false,
       });
       expect(res.body.merchants).toMatchObject([
-        { slug: 'cafe', role: 'OWNER', status: 'DRAFT' },
-        { slug: 'heladeria', role: 'EMPLOYEE' },
+        { slug: 'cafe', role: 'OWNER', status: 'DRAFT', hasActiveRule: true },
+        { slug: 'heladeria', role: 'EMPLOYEE', hasActiveRule: false },
       ]);
       const me = await withCookie('/auth/staff/me', sessionCookie(res));
       expect(me.status).toBe(200);

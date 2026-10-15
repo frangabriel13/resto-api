@@ -6,14 +6,24 @@ const postgresUrl = z.url({
 });
 
 // MIGRATE_DATABASE_URL no va: solo la usa el CLI de Prisma.
-export const envSchema = z.object({
-  NODE_ENV: z
-    .enum(['development', 'test', 'production'])
-    .default('development'),
-  PORT: z.coerce.number().int().min(1).max(65535).default(3001),
-  DATABASE_URL: postgresUrl,
-  DATABASE_ADMIN_URL: postgresUrl,
-});
+export const envSchema = z
+  .object({
+    NODE_ENV: z
+      .enum(['development', 'test', 'production'])
+      .default('development'),
+    PORT: z.coerce.number().int().min(1).max(65535).default(3001),
+    DATABASE_URL: postgresUrl,
+    DATABASE_ADMIN_URL: postgresUrl,
+    SECRET_KEY: z.string().min(32, 'tiene que tener al menos 32 caracteres'),
+    OTP_SENDER: z.enum(['console']).default('console'),
+  })
+  .refine(
+    (env) => env.NODE_ENV !== 'production' || env.OTP_SENDER !== 'console',
+    {
+      path: ['OTP_SENDER'],
+      message: 'en producción no se puede usar el envío por consola',
+    },
+  );
 
 export type Env = z.infer<typeof envSchema>;
 

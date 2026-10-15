@@ -32,6 +32,7 @@ export const staffAccountSchema = z
         name: z.string(),
         slug: z.string(),
         status: z.enum(MerchantStatus),
+        hasActiveRule: z.boolean(),
         role: z.enum(StaffRole),
       }),
     ),

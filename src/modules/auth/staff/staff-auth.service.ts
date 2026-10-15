@@ -15,7 +15,13 @@ import type { StaffAccount } from './staff-auth.schemas.js';
 const activeMemberships = {
   memberships: {
     where: { active: true },
-    include: { merchant: true },
+    include: {
+      merchant: {
+        include: {
+          rewardRules: { where: { active: true }, select: { id: true } },
+        },
+      },
+    },
     orderBy: { createdAt: 'asc' },
   },
 } as const;
@@ -127,6 +133,7 @@ function toAccount(
     name: merchant.name,
     slug: merchant.slug,
     status: merchant.status,
+    hasActiveRule: merchant.rewardRules.length > 0,
     role,
   }));
   return {

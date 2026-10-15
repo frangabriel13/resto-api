@@ -1,6 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 import request, { type Response } from 'supertest';
 import type { App } from 'supertest/types.js';
+import type { FakeOtpSender } from './fake-otp-sender.js';
 
 export function sessionCookie(res: Response, name = 'fs_staff'): string {
   const header = (res.headers['set-cookie'] as unknown as string[])?.find(
@@ -32,4 +33,21 @@ export async function loginAdmin(
     .send({ email, password })
     .expect(200);
   return sessionCookie(res, 'fs_admin');
+}
+
+export async function loginCustomer(
+  app: INestApplication<App>,
+  sender: FakeOtpSender,
+  phone: string,
+  name: string,
+) {
+  await request(app.getHttpServer())
+    .post('/auth/customer/otp/request')
+    .send({ phone })
+    .expect(200);
+  const res = await request(app.getHttpServer())
+    .post('/auth/customer/otp/verify')
+    .send({ phone, code: sender.lastCode, name })
+    .expect(200);
+  return { body: res.body, cookie: sessionCookie(res, 'fs_customer') };
 }
