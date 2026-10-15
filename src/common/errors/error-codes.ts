@@ -25,6 +25,57 @@ export const errorCatalog = {
     status: HttpStatus.CONFLICT,
     message: 'La operación entra en conflicto con el estado actual.',
   },
+  INVALID_CREDENTIALS: {
+    status: HttpStatus.UNAUTHORIZED,
+    message: 'El email o la contraseña no son correctos.',
+  },
+  NO_ACTIVE_MERCHANT: {
+    status: HttpStatus.FORBIDDEN,
+    message: 'Tu usuario no está habilitado en ningún comercio.',
+  },
+  PASSWORD_CHANGE_REQUIRED: {
+    status: HttpStatus.FORBIDDEN,
+    message: 'Tenés que cambiar tu contraseña antes de seguir.',
+  },
+  MERCHANT_NOT_SELECTED: {
+    status: HttpStatus.FORBIDDEN,
+    message: 'Elegí con qué comercio querés trabajar.',
+  },
+  MERCHANT_ACCESS_REVOKED: {
+    status: HttpStatus.FORBIDDEN,
+    message: 'Ya no tenés acceso a este comercio.',
+  },
+  MERCHANT_READ_ONLY: {
+    status: HttpStatus.CONFLICT,
+    message:
+      'El club está pausado o finalizado: el panel está en modo consulta.',
+  },
+  SLUG_TAKEN: {
+    status: HttpStatus.CONFLICT,
+    message: 'Ya hay un comercio con ese slug.',
+  },
+  SLUG_LOCKED: {
+    status: HttpStatus.CONFLICT,
+    message:
+      'El slug solo se puede cambiar mientras el comercio está en preparación.',
+  },
+  INVALID_STATUS_TRANSITION: {
+    status: HttpStatus.CONFLICT,
+    message: 'El comercio no puede pasar a ese estado.',
+  },
+  ACTIVE_RULE_REQUIRED: {
+    status: HttpStatus.CONFLICT,
+    message:
+      'Para activar el comercio tiene que tener una regla de premio activa.',
+  },
+  STAFF_ALREADY_IN_MERCHANT: {
+    status: HttpStatus.CONFLICT,
+    message: 'Esa persona ya forma parte del comercio.',
+  },
+  CURRENT_PASSWORD_INCORRECT: {
+    status: HttpStatus.BAD_REQUEST,
+    message: 'La contraseña actual no es correcta.',
+  },
   RATE_LIMITED: {
     status: HttpStatus.TOO_MANY_REQUESTS,
     message: 'Demasiados intentos. Probá de nuevo en un rato.',
