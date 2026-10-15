@@ -1,4 +1,9 @@
-import { generatePassword, hashPassword, verifyPassword } from './passwords.js';
+import {
+  generatePassword,
+  hashPassword,
+  verifyCredentialPassword,
+  verifyPassword,
+} from './passwords.js';
 
 describe('passwords', () => {
   it('verifica la contraseña correcta y rechaza otra', async () => {
@@ -9,6 +14,19 @@ describe('passwords', () => {
     await expect(verifyPassword(passwordHash, 'otra-clave')).resolves.toBe(
       false,
     );
+  });
+
+  it('sin usuario la verificación de credenciales siempre falla', async () => {
+    const passwordHash = await hashPassword('una-clave');
+    await expect(
+      verifyCredentialPassword(passwordHash, 'una-clave'),
+    ).resolves.toBe(true);
+    await expect(verifyCredentialPassword(passwordHash, 'otra')).resolves.toBe(
+      false,
+    );
+    await expect(
+      verifyCredentialPassword(undefined, 'una-clave'),
+    ).resolves.toBe(false);
   });
 
   it('genera contraseñas aleatorias sin caracteres ambiguos', () => {

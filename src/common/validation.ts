@@ -2,7 +2,10 @@ import {
   StandardSchemaValidationPipe,
   type StandardSchemaValidationPipeOptions,
 } from '@nestjs/common';
+import { z } from 'zod';
 import { AppException } from './errors/app.exception.js';
+
+z.config(z.locales.es());
 
 export type ValidationIssue = { path: string; message: string };
 

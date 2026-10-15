@@ -12,6 +12,22 @@ export function verifyPassword(
   return verify(passwordHash, password);
 }
 
+let dummyHash: Promise<string> | undefined;
+
+// Sin usuario igual se verifica un hash, para que el tiempo de respuesta no
+// revele qué emails existen.
+export async function verifyCredentialPassword(
+  passwordHash: string | undefined,
+  password: string,
+): Promise<boolean> {
+  dummyHash ??= hashPassword('contraseña-de-relleno');
+  const valid = await verifyPassword(
+    passwordHash ?? (await dummyHash),
+    password,
+  );
+  return passwordHash !== undefined && valid;
+}
+
 // Sin caracteres ambiguos (0/O, 1/l/I): se dictan o se copian a mano.
 const PASSWORD_ALPHABET =
   'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
