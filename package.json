@@ -34,6 +34,7 @@
     "@prisma/client": "7.10.0",
     "cookie": "^2.0.1",
     "dotenv": "^18.0.7",
+    "libphonenumber-js": "^1.13.15",
     "nanoid": "^6.0.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",

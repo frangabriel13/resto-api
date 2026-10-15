@@ -4,7 +4,7 @@ import { apiErrorSchema } from './errors/api-error.schema.js';
 
 export function createOpenApiDocument(app: INestApplication) {
   const config = new DocumentBuilder()
-    .setTitle('FullSync Club API')
+    .setTitle('Clubsy API')
     .setVersion('0.1')
     .addGlobalResponse({
       status: 'default',

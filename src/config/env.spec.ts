@@ -1,6 +1,7 @@
 import { validateEnv } from './env.js';
 
 const validEnv = {
+  SECRET_KEY: 'una-clave-de-prueba-de-mas-de-32-caracteres',
   DATABASE_URL: 'postgresql://resto_app:secreto-app@localhost:5434/resto_club',
   DATABASE_ADMIN_URL:
     'postgresql://resto_app_admin:secreto-admin@localhost:5434/resto_club',
@@ -39,6 +40,23 @@ describe('validateEnv', () => {
     expect(() => validateEnv({ ...validEnv, NODE_ENV: 'staging' })).toThrow(
       /NODE_ENV/,
     );
+  });
+
+  it('exige una SECRET_KEY de al menos 32 caracteres', () => {
+    expect(() => validateEnv({ ...validEnv, SECRET_KEY: 'corta' })).toThrow(
+      /SECRET_KEY/,
+    );
+  });
+
+  it('en producción no acepta el envío de códigos por consola', () => {
+    expect(() =>
+      validateEnv({
+        ...validEnv,
+        NODE_ENV: 'production',
+        OTP_SENDER: 'console',
+      }),
+    ).toThrow(/OTP_SENDER/);
+    expect(validateEnv(validEnv).OTP_SENDER).toBe('console');
   });
 
   it('no muestra los valores en el mensaje de error', () => {

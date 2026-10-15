@@ -1,6 +1,6 @@
 # resto-api
 
-API de FullSync Club (NestJS + Prisma + PostgreSQL).
+API de Clubsy (NestJS + Prisma + PostgreSQL).
 
 ```bash
 pnpm install
