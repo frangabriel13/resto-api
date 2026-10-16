@@ -2,6 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { CustomerContext } from '../../common/customer-scope/customer-context.js';
 import { AppException } from '../../common/errors/app.exception.js';
 import type { Membership, Prisma } from '../../generated/prisma/client.js';
+import {
+  STAMP_TOKEN_REFRESH_SECONDS,
+  StampTokenService,
+} from '../stamps/stamp-token.service.js';
 import { calculateBalance } from './membership-balance.js';
 import { cardInclude, toCard } from './membership-card.js';
 import type { MembershipCard } from './membership-card.schemas.js';
@@ -9,6 +13,7 @@ import type {
   JoinClubBody,
   JoinClubResult,
   MembershipSummary,
+  StampTokenResponse,
 } from './me-memberships.schemas.js';
 
 const summaryInclude = {
@@ -24,7 +29,10 @@ type MembershipWithEvents = Prisma.MembershipGetPayload<{
 
 @Injectable()
 export class MeMembershipsService {
-  constructor(private readonly customer: CustomerContext) {}
+  constructor(
+    private readonly customer: CustomerContext,
+    private readonly stampTokens: StampTokenService,
+  ) {}
 
   async list(): Promise<MembershipSummary[]> {
     const memberships = await this.customer.db.membership.findMany({
@@ -43,6 +51,16 @@ export class MeMembershipsService {
     });
     if (!membership) throw new AppException('NOT_FOUND');
     return toCard(membership);
+  }
+
+  async issueStampToken(membershipId: string): Promise<StampTokenResponse> {
+    const membership = await this.findActive(membershipId);
+    const { token, expiresAt } = this.stampTokens.issue(membership.id);
+    return {
+      token,
+      expiresAt: expiresAt.toISOString(),
+      refreshInSeconds: STAMP_TOKEN_REFRESH_SECONDS,
+    };
   }
 
   async join(body: JoinClubBody): Promise<JoinClubResult> {

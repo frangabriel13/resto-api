@@ -35,7 +35,7 @@ export class TenantGuard implements CanActivate {
             merchantId: true,
             role: true,
             active: true,
-            merchant: { select: { status: true } },
+            merchant: { select: { status: true, stampCooldownMinutes: true } },
           },
         },
       },
@@ -55,6 +55,7 @@ export class TenantGuard implements CanActivate {
     req.tenant = {
       merchantId: membership.merchantId,
       merchantStatus: membership.merchant.status,
+      stampCooldownMinutes: membership.merchant.stampCooldownMinutes,
       staffUserId: req.auth.ownerId,
       role: membership.role,
     };

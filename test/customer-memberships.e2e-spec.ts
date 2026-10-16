@@ -1,3 +1,4 @@
+import { setTimeout as sleep } from 'node:timers/promises';
 import { Controller, Get, INestApplication, Param, Post } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -9,6 +10,7 @@ import { CustomerRoute } from './../src/modules/auth/customer/customer-route.dec
 import { OTP_SENDER } from './../src/modules/auth/customer/otp-sender.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
 import { FakeOtpSender } from './helpers/fake-otp-sender.js';
+import { LOCK_WAIT_MS, whileRowLocked } from './helpers/row-lock.js';
 import { loginCustomer } from './helpers/sessions.js';
 
 @Controller('test-customer-scope')
@@ -237,6 +239,29 @@ describe('Cliente: perfil y clubes (e2e)', () => {
 
       expect(results.every((r) => r.status === 200)).toBe(true);
       expect(results.filter((r) => r.body.isNew)).toHaveLength(1);
+      expect(await prisma.membership.count()).toBe(1);
+    });
+
+    it('espera el bloqueo del cliente antes de buscar su membresía', async () => {
+      let pending: Promise<request.Response> | undefined;
+
+      await whileRowLocked('customers', ana.id, async (tx) => {
+        pending = join(ana.cookie, { merchantId: cafe.merchantId }).then(
+          (res) => res,
+        );
+        await sleep(LOCK_WAIT_MS);
+        await tx.membership.create({
+          data: {
+            customerId: ana.id,
+            merchantId: cafe.merchantId,
+            currentCycleRewardRuleId: cafe.ruleId,
+          },
+        });
+      });
+
+      const res = await pending!;
+      expect(res.status).toBe(200);
+      expect(res.body.isNew).toBe(false);
       expect(await prisma.membership.count()).toBe(1);
     });
 
