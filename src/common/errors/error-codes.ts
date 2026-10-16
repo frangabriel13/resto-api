@@ -69,6 +69,43 @@ export const errorCatalog = {
     status: HttpStatus.BAD_REQUEST,
     message: 'Decinos tu nombre para crear tu cuenta.',
   },
+  STAMP_TOKEN_INVALID: {
+    status: HttpStatus.BAD_REQUEST,
+    message: 'El QR no es válido.',
+  },
+  STAMP_TOKEN_EXPIRED: {
+    status: HttpStatus.BAD_REQUEST,
+    message: 'El QR venció. Pedile al cliente que lo actualice.',
+  },
+  CUSTOMER_OF_OTHER_MERCHANT: {
+    status: HttpStatus.FORBIDDEN,
+    message: 'Este cliente es de otro comercio.',
+  },
+  MEMBERSHIP_LEFT: {
+    status: HttpStatus.CONFLICT,
+    message: 'El cliente salió del club.',
+  },
+  COOLDOWN_ACTIVE: {
+    status: HttpStatus.CONFLICT,
+    message: 'Este cliente ya recibió un sello hace poco.',
+  },
+  VOID_NOT_ALLOWED: {
+    status: HttpStatus.FORBIDDEN,
+    message:
+      'Solo podés anular tus propios sellos en los primeros 5 minutos. Pedíselo al dueño.',
+  },
+  STAMP_IN_REDEEMED_CYCLE: {
+    status: HttpStatus.CONFLICT,
+    message: 'Ese sello es de un ciclo ya canjeado y no se puede anular.',
+  },
+  STAMP_ALREADY_VOIDED: {
+    status: HttpStatus.CONFLICT,
+    message: 'Ese sello ya estaba anulado.',
+  },
+  IDEMPOTENCY_KEY_REUSED: {
+    status: HttpStatus.CONFLICT,
+    message: 'Esta operación ya se usó para otro cliente.',
+  },
   MERCHANT_NOT_ACCEPTING_MEMBERS: {
     status: HttpStatus.CONFLICT,
     message: 'Este club no está recibiendo nuevos miembros.',

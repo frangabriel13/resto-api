@@ -44,3 +44,13 @@ export type JoinClubBody = z.infer<typeof joinClubBodySchema>;
 export type UpdateConsentBody = z.infer<typeof updateConsentBodySchema>;
 export type MembershipSummary = z.infer<typeof membershipSummarySchema>;
 export type JoinClubResult = z.infer<typeof joinClubResultSchema>;
+
+export const stampTokenSchema = z
+  .object({
+    token: z.string(),
+    expiresAt: z.iso.datetime(),
+    refreshInSeconds: z.number().int(),
+  })
+  .meta({ id: 'StampToken' });
+
+export type StampTokenResponse = z.infer<typeof stampTokenSchema>;

@@ -15,10 +15,12 @@ import {
   joinClubBodySchema,
   joinClubResultSchema,
   membershipSummarySchema,
+  stampTokenSchema,
   updateConsentBodySchema,
   type JoinClubBody,
   type JoinClubResult,
   type MembershipSummary,
+  type StampTokenResponse,
   type UpdateConsentBody,
 } from './me-memberships.schemas.js';
 import { MeMembershipsService } from './me-memberships.service.js';
@@ -47,6 +49,14 @@ export class MeMembershipsController {
     @Param('id', { schema: z.uuid() }) id: string,
   ): Promise<MembershipCard> {
     return this.memberships.getCard(id);
+  }
+
+  @Get(':id/stamp-token')
+  @ApiResponse({ status: HttpStatus.OK, standardSchema: stampTokenSchema })
+  stampToken(
+    @Param('id', { schema: z.uuid() }) id: string,
+  ): Promise<StampTokenResponse> {
+    return this.memberships.issueStampToken(id);
   }
 
   @Post()

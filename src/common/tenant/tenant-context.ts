@@ -15,6 +15,7 @@ import { tenantScope } from './tenant-scope.extension.js';
 export type TenantScope = {
   merchantId: string;
   merchantStatus: MerchantStatus;
+  stampCooldownMinutes: number;
   staffUserId: string;
   role: StaffRole;
 };

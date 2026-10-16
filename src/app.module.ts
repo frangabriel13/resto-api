@@ -13,7 +13,9 @@ import { AuthModule } from './modules/auth/auth.module.js';
 import { SessionsModule } from './modules/auth/sessions/sessions.module.js';
 import { CustomersModule } from './modules/customers/customers.module.js';
 import { MembershipsModule } from './modules/memberships/memberships.module.js';
+import { PanelCustomersModule } from './modules/panel-customers/panel-customers.module.js';
 import { PiecesModule } from './modules/pieces/pieces.module.js';
+import { StampsModule } from './modules/stamps/stamps.module.js';
 import { RewardRulesModule } from './modules/reward-rules/reward-rules.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 
@@ -37,6 +39,8 @@ import { PrismaModule } from './prisma/prisma.module.js';
     PiecesModule,
     CustomersModule,
     MembershipsModule,
+    StampsModule,
+    PanelCustomersModule,
   ],
   providers: [
     // Registrados acá (y no en main.ts) para que los E2E se comporten igual.

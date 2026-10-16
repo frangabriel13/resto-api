@@ -9,6 +9,10 @@ export function hmacHex(key: Buffer, value: string): string {
   return createHmac('sha256', key).update(value).digest('hex');
 }
 
+export function hmacBase64Url(key: Buffer, value: string): string {
+  return createHmac('sha256', key).update(value).digest('base64url');
+}
+
 export function safeEqual(a: string, b: string): boolean {
   const left = Buffer.from(a);
   const right = Buffer.from(b);
