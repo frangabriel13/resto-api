@@ -5,9 +5,8 @@ import {
   panelMembershipSchema,
 } from '../memberships/panel-membership.schemas.js';
 
-export const searchCustomersQuerySchema = z
-  .object({ query: z.string().trim().min(2).max(50) })
-  .meta({ id: 'SearchCustomersQuery' });
+// Como parámetro con nombre: un schema de objeto en @Query no sale en el OpenAPI.
+export const customerSearchTermSchema = z.string().trim().min(2).max(50);
 
 const voidedSchema = z
   .object({
@@ -55,6 +54,5 @@ export const customerDetailSchema = z
   })
   .meta({ id: 'CustomerDetail' });
 
-export type SearchCustomersQuery = z.infer<typeof searchCustomersQuerySchema>;
 export type CustomerDetail = z.infer<typeof customerDetailSchema>;
 export type CustomerHistoryEntry = z.infer<typeof historyEntrySchema>;

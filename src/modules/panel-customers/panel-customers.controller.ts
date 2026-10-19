@@ -8,9 +8,8 @@ import {
 } from '../memberships/panel-membership.schemas.js';
 import {
   customerDetailSchema,
-  searchCustomersQuerySchema,
+  customerSearchTermSchema,
   type CustomerDetail,
-  type SearchCustomersQuery,
 } from './panel-customers.schemas.js';
 import { PanelCustomersService } from './panel-customers.service.js';
 
@@ -25,9 +24,9 @@ export class PanelCustomersController {
     standardSchema: z.array(panelMembershipSchema),
   })
   search(
-    @Query({ schema: searchCustomersQuerySchema }) query: SearchCustomersQuery,
+    @Query('query', { schema: customerSearchTermSchema }) query: string,
   ): Promise<PanelMembership[]> {
-    return this.customers.search(query.query);
+    return this.customers.search(query);
   }
 
   @Get(':membershipId')
