@@ -241,6 +241,33 @@ export function describePanelIsolation(mode: string) {
       expect(rule.merchantId).toBe(cafe.merchantId);
     });
 
+    it('la actividad no incluye eventos del otro comercio', async () => {
+      for (const cookie of [employee, owner]) {
+        const res = await get(cookie, '/panel/activity').expect(200);
+        const memberships = res.body.items.map(
+          (e: { customer: { membershipId: string } }) =>
+            e.customer.membershipId,
+        );
+        expect(memberships).toEqual([ana.membershipId]);
+      }
+    });
+
+    it('las estadísticas no cuentan nada del otro comercio', async () => {
+      for (const cookie of [employee, owner]) {
+        const res = await get(cookie, '/panel/stats').expect(200);
+        expect(res.body.members).toEqual({
+          active: 1,
+          returning: 0,
+          marketingConsent: 0,
+        });
+        expect(res.body.period).toMatchObject({
+          joined: 1,
+          stamps: 0,
+          redemptions: 0,
+        });
+      }
+    });
+
     it('no puede elegir un comercio al que no pertenece', async () => {
       await post(employee, '/auth/staff/select-merchant', {
         merchantId: heladeria.merchantId,

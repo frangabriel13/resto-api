@@ -8,6 +8,7 @@ import {
   redemptionVoidDenial,
   validStampsInCycle,
 } from '../redemptions/redemption-void-rules.js';
+import { staffNameSelect as staffName } from '../staff/staff-name.js';
 import { cooldownStatus } from '../stamps/cooldown.js';
 import { voidDenial } from '../stamps/void-rules.js';
 import type {
@@ -16,10 +17,6 @@ import type {
 } from './panel-customers.schemas.js';
 
 export const HISTORY_LIMIT = 100;
-
-const staffName = {
-  select: { staffUser: { select: { name: true } } },
-} as const;
 
 export const customerDetailInclude = {
   customer: true,

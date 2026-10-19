@@ -119,6 +119,11 @@ export const errorCatalog = {
     message:
       'El cliente ya tiene sellos después de este canje. Anulalos primero.',
   },
+  INVALID_DATE_RANGE: {
+    status: HttpStatus.BAD_REQUEST,
+    message:
+      'El rango de fechas no es válido: hasta 366 días, de menor a mayor.',
+  },
   IDEMPOTENCY_KEY_REUSED: {
     status: HttpStatus.CONFLICT,
     message: 'Esta operación ya se usó para otro cliente.',

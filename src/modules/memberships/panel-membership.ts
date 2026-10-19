@@ -34,12 +34,11 @@ export function toPanelMembership(
 ): PanelMembership {
   const { customer } = membership;
   const balance = panelBalance(membership);
-  const phone = customer.phoneE164;
   return {
     id: membership.id,
     customer: {
       name: customer.name,
-      phone: phone && role !== 'OWNER' ? maskPhone(phone) : phone,
+      phone: panelPhone(customer.phoneE164, role),
     },
     cycle: balance.cycle,
     balance: balance.balance,
@@ -48,6 +47,14 @@ export function toPanelMembership(
     canRedeem: balance.canRedeem,
     totalStamps: balance.totalStamps,
   };
+}
+
+// Completo para el OWNER, enmascarado para el EMPLOYEE.
+export function panelPhone(
+  phoneE164: string | null,
+  role: StaffRole,
+): string | null {
+  return phoneE164 && role !== 'OWNER' ? maskPhone(phoneE164) : phoneE164;
 }
 
 export function lastValidStampAt(membership: MembershipForPanel): Date | null {

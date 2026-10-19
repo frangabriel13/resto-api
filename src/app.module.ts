@@ -7,6 +7,7 @@ import { CustomerScopeModule } from './common/customer-scope/customer-scope.modu
 import { TenantModule } from './common/tenant/tenant.module.js';
 import { createValidationPipe } from './common/validation.js';
 import { validateEnv } from './config/env.js';
+import { ActivityModule } from './modules/activity/activity.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
 import { AuditModule } from './modules/audit/audit.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
@@ -16,6 +17,7 @@ import { MembershipsModule } from './modules/memberships/memberships.module.js';
 import { PanelCustomersModule } from './modules/panel-customers/panel-customers.module.js';
 import { PiecesModule } from './modules/pieces/pieces.module.js';
 import { RedemptionsModule } from './modules/redemptions/redemptions.module.js';
+import { StatsModule } from './modules/stats/stats.module.js';
 import { StampsModule } from './modules/stamps/stamps.module.js';
 import { RewardRulesModule } from './modules/reward-rules/reward-rules.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
@@ -43,6 +45,8 @@ import { PrismaModule } from './prisma/prisma.module.js';
     StampsModule,
     RedemptionsModule,
     PanelCustomersModule,
+    ActivityModule,
+    StatsModule,
   ],
   providers: [
     // Registrados acá (y no en main.ts) para que los E2E se comporten igual.
