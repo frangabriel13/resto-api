@@ -24,7 +24,7 @@ import {
 import { SessionGuard } from './../src/modules/auth/sessions/session.guard.js';
 import { SessionService } from './../src/modules/auth/sessions/session.service.js';
 import { hashSessionToken } from './../src/modules/auth/sessions/session-token.js';
-import { PrismaService } from './../src/prisma/prisma.service.js';
+import { PrismaAdminService } from './../src/prisma/prisma-admin.service.js';
 
 @Controller('test-sessions')
 class TestSessionsController {
@@ -85,7 +85,7 @@ const HOUR = 60 * 60 * 1000;
 
 describe('Sesiones (e2e)', () => {
   let app: INestApplication<App>;
-  let prisma: PrismaService;
+  let prisma: PrismaAdminService;
   let owners: Record<SessionKind, string>;
 
   beforeAll(async () => {
@@ -95,7 +95,7 @@ describe('Sesiones (e2e)', () => {
     }).compile();
     app = moduleRef.createNestApplication({ logger: false });
     await app.init();
-    prisma = moduleRef.get(PrismaService);
+    prisma = moduleRef.get(PrismaAdminService);
   });
 
   afterAll(async () => {

@@ -4,7 +4,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { OTP_SENDER } from './../src/modules/auth/customer/otp-sender.js';
-import { PrismaService } from './../src/prisma/prisma.service.js';
+import { PrismaAdminService } from './../src/prisma/prisma-admin.service.js';
 import { FakeOtpSender } from './helpers/fake-otp-sender.js';
 import { sessionCookie } from './helpers/sessions.js';
 
@@ -13,7 +13,7 @@ const MINUTE = 60_000;
 
 describe('Cliente: código por teléfono (e2e)', () => {
   let app: INestApplication<App>;
-  let prisma: PrismaService;
+  let prisma: PrismaAdminService;
   let sender: FakeOtpSender;
 
   // Una app por test: los límites por IP se cuentan en memoria.
@@ -25,7 +25,7 @@ describe('Cliente: código por teléfono (e2e)', () => {
       .compile();
     app = moduleRef.createNestApplication({ logger: false });
     await app.init();
-    prisma = moduleRef.get(PrismaService);
+    prisma = moduleRef.get(PrismaAdminService);
   });
 
   afterEach(async () => {

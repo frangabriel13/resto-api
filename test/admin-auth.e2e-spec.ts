@@ -5,7 +5,7 @@ import type { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { hashPassword } from './../src/common/passwords.js';
 import { AdminOnly } from './../src/modules/auth/admin/admin-only.decorator.js';
-import { PrismaService } from './../src/prisma/prisma.service.js';
+import { PrismaAdminService } from './../src/prisma/prisma-admin.service.js';
 import { loginStaff, sessionCookie } from './helpers/sessions.js';
 
 @Controller('test-admin')
@@ -31,7 +31,7 @@ describe('Login de PlatformAdmin (e2e)', () => {
     app = moduleRef.createNestApplication({ logger: false });
     await app.init();
 
-    const prisma = moduleRef.get(PrismaService);
+    const prisma = moduleRef.get(PrismaAdminService);
     const passwordHash = await hashPassword(PASSWORD);
     await prisma.platformAdmin.create({
       data: { email: 'ana@fullsync.com', name: 'Ana', passwordHash },

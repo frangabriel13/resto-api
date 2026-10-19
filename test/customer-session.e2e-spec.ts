@@ -7,7 +7,7 @@ import { CustomerOnly } from './../src/modules/auth/customer/customer.guard.js';
 import { OTP_SENDER } from './../src/modules/auth/customer/otp-sender.js';
 import { Auth } from './../src/modules/auth/sessions/auth.decorator.js';
 import type { AuthSession } from './../src/modules/auth/sessions/session-kinds.js';
-import { PrismaService } from './../src/prisma/prisma.service.js';
+import { PrismaAdminService } from './../src/prisma/prisma-admin.service.js';
 import { FakeOtpSender } from './helpers/fake-otp-sender.js';
 import { loginCustomer } from './helpers/sessions.js';
 
@@ -22,7 +22,7 @@ class TestCustomerController {
 
 describe('Cliente: sesión y logout (e2e)', () => {
   let app: INestApplication<App>;
-  let prisma: PrismaService;
+  let prisma: PrismaAdminService;
   let customer: { id: string; cookie: string };
 
   beforeEach(async () => {
@@ -36,7 +36,7 @@ describe('Cliente: sesión y logout (e2e)', () => {
       .compile();
     app = moduleRef.createNestApplication({ logger: false });
     await app.init();
-    prisma = moduleRef.get(PrismaService);
+    prisma = moduleRef.get(PrismaAdminService);
 
     const login = await loginCustomer(app, sender, '11 2345-6789', 'Ana');
     customer = { id: login.body.customer.id, cookie: login.cookie };

@@ -1,5 +1,5 @@
 import type { Prisma } from './../../src/generated/prisma/client.js';
-import { createMigratorClient } from './../setup/test-database.js';
+import { createAdminClient } from './../setup/test-database.js';
 
 // Bloquea la fila desde otra conexión mientras corre `work`. Sirve para
 // probar de forma determinista que el código espera ese bloqueo.
@@ -8,7 +8,7 @@ export async function whileRowLocked(
   id: string,
   work: (tx: Prisma.TransactionClient) => Promise<void>,
 ) {
-  const client = createMigratorClient();
+  const client = createAdminClient();
   try {
     await client.$transaction(
       async (tx) => {

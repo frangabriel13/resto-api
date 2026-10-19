@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AppException } from '../../../common/errors/app.exception.js';
+import { runWithSetting } from '../../../common/request-scope/scoped-transaction.js';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { authenticateRequest } from '../sessions/session.guard.js';
 import { SessionService } from '../sessions/session.service.js';
@@ -20,10 +21,16 @@ export class CustomerGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const auth = await authenticateRequest(this.sessions, 'customer', context);
-    const customer = await this.prisma.customer.findUnique({
-      where: { id: auth.ownerId },
-      select: { deletedAt: true },
-    });
+    const customer = await runWithSetting(
+      this.prisma,
+      'app.customer_id',
+      auth.ownerId,
+      (tx) =>
+        tx.customer.findUnique({
+          where: { id: auth.ownerId },
+          select: { deletedAt: true },
+        }),
+    );
     if (!customer || customer.deletedAt) {
       const http = context.switchToHttp();
       await this.sessions.end(

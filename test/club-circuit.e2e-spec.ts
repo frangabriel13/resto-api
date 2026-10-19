@@ -5,7 +5,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { OTP_SENDER } from './../src/modules/auth/customer/otp-sender.js';
-import { PrismaService } from './../src/prisma/prisma.service.js';
+import { PrismaAdminService } from './../src/prisma/prisma-admin.service.js';
 import {
   createClub,
   joinClub,
@@ -31,7 +31,7 @@ describe('Hito 6: sellos, canje y ciclo nuevo (e2e)', () => {
       .compile();
     app = moduleRef.createNestApplication({ logger: false });
     await app.init();
-    const prisma = moduleRef.get(PrismaService);
+    const prisma = moduleRef.get(PrismaAdminService);
 
     const cafe = await createClub(prisma, 'cafe', [
       ['empleado@cafe.com', 'EMPLOYEE'],

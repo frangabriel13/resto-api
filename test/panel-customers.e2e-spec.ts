@@ -5,7 +5,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { OTP_SENDER } from './../src/modules/auth/customer/otp-sender.js';
-import { PrismaService } from './../src/prisma/prisma.service.js';
+import { PrismaAdminService } from './../src/prisma/prisma-admin.service.js';
 import {
   createClub,
   joinClub,
@@ -20,7 +20,7 @@ const MINUTE = 60_000;
 
 describe('Panel: búsqueda, ficha y sello manual (e2e)', () => {
   let app: INestApplication<App>;
-  let prisma: PrismaService;
+  let prisma: PrismaAdminService;
   let cafe: Awaited<ReturnType<typeof createClub>>;
   let ana: ClubMember;
   let anaMaria: ClubMember;
@@ -36,7 +36,7 @@ describe('Panel: búsqueda, ficha y sello manual (e2e)', () => {
       .compile();
     app = moduleRef.createNestApplication({ logger: false });
     await app.init();
-    prisma = moduleRef.get(PrismaService);
+    prisma = moduleRef.get(PrismaAdminService);
 
     cafe = await createClub(prisma, 'cafe', [
       ['empleado@cafe.com', 'EMPLOYEE'],

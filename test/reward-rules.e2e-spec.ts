@@ -5,7 +5,7 @@ import type { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { hashPassword } from './../src/common/passwords.js';
 import type { MerchantStatus } from './../src/generated/prisma/client.js';
-import { PrismaService } from './../src/prisma/prisma.service.js';
+import { PrismaAdminService } from './../src/prisma/prisma-admin.service.js';
 import { loginStaff } from './helpers/sessions.js';
 
 const PASSWORD = 'clave-correcta';
@@ -17,7 +17,7 @@ const rule = (stampsRequired: number, rewardDescription = 'Café gratis') => ({
 
 describe('Panel: reglas de premio (e2e)', () => {
   let app: INestApplication<App>;
-  let prisma: PrismaService;
+  let prisma: PrismaAdminService;
   let merchantId: string;
   let owner: string;
 
@@ -28,7 +28,7 @@ describe('Panel: reglas de premio (e2e)', () => {
     }).compile();
     app = moduleRef.createNestApplication({ logger: false });
     await app.init();
-    prisma = moduleRef.get(PrismaService);
+    prisma = moduleRef.get(PrismaAdminService);
 
     const passwordHash = await hashPassword(PASSWORD);
     const [cafe, otro] = await Promise.all(

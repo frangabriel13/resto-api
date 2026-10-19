@@ -6,6 +6,7 @@ import {
   verifyCredentialPassword,
   verifyPassword,
 } from '../../../common/passwords.js';
+import { runWithSetting } from '../../../common/request-scope/scoped-transaction.js';
 import type { Prisma } from '../../../generated/prisma/client.js';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import type { AuthSession } from '../sessions/session-kinds.js';
@@ -53,10 +54,7 @@ export class StaffAuthService {
   }
 
   async getAccount(session: AuthSession): Promise<StaffAccount> {
-    const user = await this.prisma.staffUser.findUniqueOrThrow({
-      where: { id: session.ownerId },
-      include: activeMemberships,
-    });
+    const user = await this.loadUser(session.ownerId);
     const { selectedMerchantId } =
       await this.prisma.staffSession.findUniqueOrThrow({
         where: { id: session.sessionId },
@@ -68,11 +66,20 @@ export class StaffAuthService {
     session: AuthSession,
     merchantId: string,
   ): Promise<StaffAccount> {
-    const membership = await this.prisma.staffMembership.findUnique({
-      where: {
-        staffUserId_merchantId: { staffUserId: session.ownerId, merchantId },
-      },
-    });
+    const membership = await runWithSetting(
+      this.prisma,
+      'app.staff_user_id',
+      session.ownerId,
+      (tx) =>
+        tx.staffMembership.findUnique({
+          where: {
+            staffUserId_merchantId: {
+              staffUserId: session.ownerId,
+              merchantId,
+            },
+          },
+        }),
+    );
     if (!membership?.active) {
       throw new AppException('FORBIDDEN', 'No tenés acceso a ese comercio.');
     }
@@ -104,16 +111,30 @@ export class StaffAuthService {
     email: string,
     password: string,
   ): Promise<UserWithMemberships> {
-    const user = await this.prisma.staffUser.findUnique({
+    const credentials = await this.prisma.staffUser.findUnique({
       where: { email },
-      include: activeMemberships,
+      select: { id: true, passwordHash: true },
     });
-    const valid = await verifyCredentialPassword(user?.passwordHash, password);
-    if (!user || !valid) throw new AppException('INVALID_CREDENTIALS');
+    const valid = await verifyCredentialPassword(
+      credentials?.passwordHash,
+      password,
+    );
+    if (!credentials || !valid) throw new AppException('INVALID_CREDENTIALS');
+    const user = await this.loadUser(credentials.id);
     if (user.memberships.length === 0) {
       throw new AppException('NO_ACTIVE_MERCHANT');
     }
     return user;
+  }
+
+  // Sus comercios se leen antes de elegir uno: RLS los muestra por usuario.
+  private loadUser(staffUserId: string): Promise<UserWithMemberships> {
+    return runWithSetting(this.prisma, 'app.staff_user_id', staffUserId, (tx) =>
+      tx.staffUser.findUniqueOrThrow({
+        where: { id: staffUserId },
+        include: activeMemberships,
+      }),
+    );
   }
 
   private async saveSelection(session: AuthSession, merchantId: string) {

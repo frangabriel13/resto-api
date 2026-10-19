@@ -6,7 +6,7 @@ import { AppModule } from './../src/app.module.js';
 import { createOpenApiDocument } from './../src/common/openapi.js';
 import { hashPassword } from './../src/common/passwords.js';
 import { StaffGuard } from './../src/modules/auth/staff/staff.guard.js';
-import { PrismaService } from './../src/prisma/prisma.service.js';
+import { PrismaAdminService } from './../src/prisma/prisma-admin.service.js';
 import { sessionCookie } from './helpers/sessions.js';
 
 @Controller('test-staff')
@@ -22,7 +22,7 @@ const PASSWORD = 'clave-correcta';
 
 describe('Login de staff (e2e)', () => {
   let app: INestApplication<App>;
-  let prisma: PrismaService;
+  let prisma: PrismaAdminService;
 
   // Una app por test: el límite de intentos se cuenta en memoria.
   beforeEach(async () => {
@@ -32,7 +32,7 @@ describe('Login de staff (e2e)', () => {
     }).compile();
     app = moduleRef.createNestApplication({ logger: false });
     await app.init();
-    prisma = moduleRef.get(PrismaService);
+    prisma = moduleRef.get(PrismaAdminService);
 
     const passwordHash = await hashPassword(PASSWORD);
     const [cafe, heladeria, cerrado] = await Promise.all(

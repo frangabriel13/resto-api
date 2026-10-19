@@ -1,17 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from './../src/app.module.js';
-import { PrismaService } from './../src/prisma/prisma.service.js';
+import { PrismaAdminService } from './../src/prisma/prisma-admin.service.js';
 
 describe('Schema de la base (e2e)', () => {
   let moduleRef: TestingModule;
-  let prisma: PrismaService;
+  let prisma: PrismaAdminService;
 
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
     await moduleRef.init();
-    prisma = moduleRef.get(PrismaService);
+    prisma = moduleRef.get(PrismaAdminService);
   });
 
   afterAll(async () => {
