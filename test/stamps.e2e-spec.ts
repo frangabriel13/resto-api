@@ -5,14 +5,13 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
-import { deriveKey } from './../src/common/crypto.js';
 import { OTP_SENDER } from './../src/modules/auth/customer/otp-sender.js';
-import { signStampToken } from './../src/modules/stamps/stamp-token.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
 import { FakeOtpSender } from './helpers/fake-otp-sender.js';
 import { LOCK_WAIT_MS, whileRowLocked } from './helpers/row-lock.js';
 import {
   createClub,
+  expiredStampToken,
   joinClub,
   STAFF_PASSWORD,
   stampTokenFor,
@@ -65,12 +64,6 @@ describe('Sellos por QR (e2e)', () => {
   });
 
   const tokenFor = (member: ClubMember) => stampTokenFor(app, member);
-  const expiredTokenFor = (membershipId: string) =>
-    signStampToken(
-      deriveKey(process.env.SECRET_KEY!, 'stamp-token'),
-      membershipId,
-      new Date(Date.now() - 1000),
-    );
   const scan = (cookie: string, stampToken: string) =>
     request(app.getHttpServer())
       .post('/panel/scans')
@@ -169,7 +162,7 @@ describe('Sellos por QR (e2e)', () => {
 
       const retry = await stamp(
         employee,
-        expiredTokenFor(ana.membershipId),
+        expiredStampToken(ana.membershipId),
         key,
       ).expect(201);
 
@@ -199,7 +192,7 @@ describe('Sellos por QR (e2e)', () => {
     it('rechaza un QR vencido, adulterado o de otro comercio', async () => {
       const expired = await stamp(
         employee,
-        expiredTokenFor(ana.membershipId),
+        expiredStampToken(ana.membershipId),
       ).expect(400);
       expect(expired.body.code).toBe('STAMP_TOKEN_EXPIRED');
 

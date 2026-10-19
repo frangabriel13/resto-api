@@ -102,6 +102,23 @@ export const errorCatalog = {
     status: HttpStatus.CONFLICT,
     message: 'Ese sello ya estaba anulado.',
   },
+  INSUFFICIENT_BALANCE: {
+    status: HttpStatus.CONFLICT,
+    message: 'Al cliente todavía no le alcanzan los sellos para el premio.',
+  },
+  REDEMPTION_ALREADY_VOIDED: {
+    status: HttpStatus.CONFLICT,
+    message: 'Ese canje ya estaba anulado.',
+  },
+  REDEMPTION_NOT_LAST: {
+    status: HttpStatus.CONFLICT,
+    message: 'Solo se puede anular el último canje del cliente.',
+  },
+  NEW_CYCLE_HAS_STAMPS: {
+    status: HttpStatus.CONFLICT,
+    message:
+      'El cliente ya tiene sellos después de este canje. Anulalos primero.',
+  },
   IDEMPOTENCY_KEY_REUSED: {
     status: HttpStatus.CONFLICT,
     message: 'Esta operación ya se usó para otro cliente.',

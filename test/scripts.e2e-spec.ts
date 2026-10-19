@@ -127,6 +127,48 @@ describe('Scripts de datos (e2e)', () => {
       expect(first.merchants).toBe(1);
     });
 
+    it('reutiliza a un cliente [DEMO] que también está en otro comercio', async () => {
+      await seedDemo(prisma, { staffPassword: 'clave-demo' });
+      const demoCustomer = await prisma.customer.findFirstOrThrow({
+        where: { name: '[DEMO] Ana Gómez' },
+      });
+      const other = await prisma.merchant.create({
+        data: { name: 'Otro', slug: 'otro' },
+      });
+      const rule = await prisma.rewardRule.create({
+        data: {
+          merchantId: other.id,
+          version: 1,
+          stampsRequired: 5,
+          rewardDescription: 'Café',
+          active: true,
+        },
+      });
+      const elsewhere = await prisma.membership.create({
+        data: {
+          customerId: demoCustomer.id,
+          merchantId: other.id,
+          currentCycleRewardRuleId: rule.id,
+        },
+      });
+      const before = await counts();
+
+      await seedDemo(prisma, { staffPassword: 'clave-demo' });
+
+      expect(await counts()).toEqual(before);
+      const demoMemberships = await prisma.membership.findMany({
+        where: { customerId: demoCustomer.id },
+        include: { merchant: true },
+      });
+      expect(demoMemberships.map((m) => m.merchant.slug).sort()).toEqual([
+        DEMO_MERCHANT_SLUG,
+        'otro',
+      ]);
+      await expect(
+        prisma.membership.findUnique({ where: { id: elsewhere.id } }),
+      ).resolves.not.toBeNull();
+    });
+
     it('no toca datos que no son de la demo', async () => {
       const other = await prisma.merchant.create({
         data: { name: 'Otro', slug: 'otro' },

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { deriveKey } from '../../common/crypto.js';
+import { AppException } from '../../common/errors/app.exception.js';
 import type { Env } from '../../config/env.js';
 import {
   readStampToken,
@@ -31,7 +32,10 @@ export class StampTokenService {
     };
   }
 
-  read(token: string): StampToken | null {
-    return readStampToken(this.key, token);
+  // Valida la firma; el vencimiento lo decide quien lo usa.
+  readOrThrow(token: string): StampToken {
+    const stampToken = readStampToken(this.key, token);
+    if (!stampToken) throw new AppException('STAMP_TOKEN_INVALID');
+    return stampToken;
   }
 }

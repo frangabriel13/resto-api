@@ -40,6 +40,7 @@ const historyEntrySchema = z.discriminatedUnion('type', [
     rewardDescription: z.string(),
     confirmedBy: z.string(),
     voided: voidedSchema,
+    canVoid: z.boolean(),
   }),
 ]);
 

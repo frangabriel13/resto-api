@@ -4,6 +4,10 @@ import {
   lastValidStampAt,
   toPanelMembership,
 } from '../memberships/panel-membership.js';
+import {
+  redemptionVoidDenial,
+  validStampsInCycle,
+} from '../redemptions/redemption-void-rules.js';
 import { cooldownStatus } from '../stamps/cooldown.js';
 import { voidDenial } from '../stamps/void-rules.js';
 import type {
@@ -78,6 +82,10 @@ function toHistory(
         now,
       }) === null,
   }));
+  const newCycleStamps = validStampsInCycle(
+    membership.stamps,
+    membership.currentCycle,
+  );
   const redemptions = membership.redemptions.map((redemption) => ({
     type: 'REDEMPTION' as const,
     id: redemption.id,
@@ -88,6 +96,13 @@ function toHistory(
     rewardDescription: redemption.rewardRule.rewardDescription,
     confirmedBy: redemption.confirmedBy.staffUser.name,
     voided: toVoided(redemption),
+    canVoid:
+      redemptionVoidDenial({
+        redemption,
+        currentCycle: membership.currentCycle,
+        newCycleStamps,
+        role: scope.role,
+      }) === null,
   }));
   return [...stamps, ...redemptions]
     .sort((a, b) => b.at.getTime() - a.at.getTime())

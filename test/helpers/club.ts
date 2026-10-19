@@ -1,8 +1,10 @@
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
+import { deriveKey } from './../../src/common/crypto.js';
 import { hashPassword } from './../../src/common/passwords.js';
 import type { StaffRole } from './../../src/generated/prisma/client.js';
+import { signStampToken } from './../../src/modules/stamps/stamp-token.js';
 import type { PrismaService } from './../../src/prisma/prisma.service.js';
 import type { FakeOtpSender } from './fake-otp-sender.js';
 import { loginCustomer } from './sessions.js';
@@ -79,4 +81,12 @@ export async function stampTokenFor(
     .set('Cookie', member.cookie)
     .expect(200);
   return res.body.token;
+}
+
+export function expiredStampToken(membershipId: string): string {
+  return signStampToken(
+    deriveKey(process.env.SECRET_KEY!, 'stamp-token'),
+    membershipId,
+    new Date(Date.now() - 1000),
+  );
 }
