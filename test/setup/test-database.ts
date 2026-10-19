@@ -30,6 +30,14 @@ export function createMigratorClient() {
   });
 }
 
+// Con BYPASSRLS: las tablas tienen FORCE ROW LEVEL SECURITY, así que ni el
+// dueño puede leer o bloquear filas sin contexto.
+export function createAdminClient() {
+  return new PrismaClient({
+    adapter: new PrismaPg({ connectionString: process.env.DATABASE_ADMIN_URL }),
+  });
+}
+
 export async function resetDatabase(client: PrismaClient) {
   await client.$executeRawUnsafe(`
     DO $$

@@ -5,14 +5,14 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { hashPassword } from './../src/common/passwords.js';
-import { PrismaService } from './../src/prisma/prisma.service.js';
+import { PrismaAdminService } from './../src/prisma/prisma-admin.service.js';
 import { loginAdmin, loginStaff } from './helpers/sessions.js';
 
 const PASSWORD = 'clave-de-admin';
 
 describe('Admin: alta del dueño (e2e)', () => {
   let app: INestApplication<App>;
-  let prisma: PrismaService;
+  let prisma: PrismaAdminService;
   let cookie: string;
   let merchantId: string;
 
@@ -23,7 +23,7 @@ describe('Admin: alta del dueño (e2e)', () => {
     }).compile();
     app = moduleRef.createNestApplication({ logger: false });
     await app.init();
-    prisma = moduleRef.get(PrismaService);
+    prisma = moduleRef.get(PrismaAdminService);
 
     await prisma.platformAdmin.create({
       data: {

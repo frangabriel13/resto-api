@@ -4,14 +4,14 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { OTP_SENDER } from './../src/modules/auth/customer/otp-sender.js';
-import { PrismaService } from './../src/prisma/prisma.service.js';
+import { PrismaAdminService } from './../src/prisma/prisma-admin.service.js';
 import { FakeOtpSender } from './helpers/fake-otp-sender.js';
 
 // El circuito del hito 4 tal como lo recorre el front: pieza → código →
 // alta en el club → tarjeta, y la vuelta con la misma cuenta.
 describe('Hito 4: alta del cliente y tarjeta (e2e)', () => {
   let app: INestApplication<App>;
-  let prisma: PrismaService;
+  let prisma: PrismaAdminService;
   let sender: FakeOtpSender;
 
   beforeEach(async () => {
@@ -22,7 +22,7 @@ describe('Hito 4: alta del cliente y tarjeta (e2e)', () => {
       .compile();
     app = moduleRef.createNestApplication({ logger: false });
     await app.init();
-    prisma = moduleRef.get(PrismaService);
+    prisma = moduleRef.get(PrismaAdminService);
 
     await createClub('Café La Esquina', 'cafe-la-esquina', 'mostrador123');
     await createClub('Heladería Polo', 'heladeria-polo', 'helado123456');

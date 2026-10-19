@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AppException } from '../../../common/errors/app.exception.js';
+import { runWithSetting } from '../../../common/request-scope/scoped-transaction.js';
 import type { TenantRequest } from '../../../common/tenant/tenant-transaction.interceptor.js';
 import type { StaffRole } from '../../../generated/prisma/client.js';
 import { PrismaService } from '../../../prisma/prisma.service.js';
@@ -27,19 +28,27 @@ export class TenantGuard implements CanActivate {
     const req = context
       .switchToHttp()
       .getRequest<AuthenticatedRequest & TenantRequest>();
-    const session = await this.prisma.staffSession.findUnique({
-      where: { id: req.auth.sessionId },
-      select: {
-        selectedMerchant: {
+    const session = await runWithSetting(
+      this.prisma,
+      'app.staff_user_id',
+      req.auth.ownerId,
+      (tx) =>
+        tx.staffSession.findUnique({
+          where: { id: req.auth.sessionId },
           select: {
-            merchantId: true,
-            role: true,
-            active: true,
-            merchant: { select: { status: true, stampCooldownMinutes: true } },
+            selectedMerchant: {
+              select: {
+                merchantId: true,
+                role: true,
+                active: true,
+                merchant: {
+                  select: { status: true, stampCooldownMinutes: true },
+                },
+              },
+            },
           },
-        },
-      },
-    });
+        }),
+    );
     const membership = session?.selectedMerchant;
     if (!membership) throw new AppException('MERCHANT_NOT_SELECTED');
     if (!membership.active) throw new AppException('MERCHANT_ACCESS_REVOKED');

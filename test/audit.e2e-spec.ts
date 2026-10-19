@@ -8,7 +8,7 @@ import { AppException } from './../src/common/errors/app.exception.js';
 import { hashPassword } from './../src/common/passwords.js';
 import { AuditService } from './../src/modules/audit/audit.service.js';
 import { Panel } from './../src/modules/auth/panel/panel.decorator.js';
-import { PrismaService } from './../src/prisma/prisma.service.js';
+import { PrismaAdminService } from './../src/prisma/prisma-admin.service.js';
 import { loginStaff } from './helpers/sessions.js';
 
 @Controller('test-audit')
@@ -34,7 +34,7 @@ class TestAuditController {
 
 describe('Auditoría (e2e)', () => {
   let app: INestApplication<App>;
-  let prisma: PrismaService;
+  let prisma: PrismaAdminService;
   let cookie: string;
   let ids: { merchant: string; staff: string };
 
@@ -45,7 +45,7 @@ describe('Auditoría (e2e)', () => {
     }).compile();
     app = moduleRef.createNestApplication({ logger: false });
     await app.init();
-    prisma = moduleRef.get(PrismaService);
+    prisma = moduleRef.get(PrismaAdminService);
 
     const merchant = await prisma.merchant.create({
       data: { name: 'Café', slug: 'cafe' },

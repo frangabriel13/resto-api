@@ -4,6 +4,10 @@ import type { Request, Response } from 'express';
 import { deriveKey } from '../../../common/crypto.js';
 import { AppException } from '../../../common/errors/app.exception.js';
 import { isUniqueViolation } from '../../../common/prisma-errors.js';
+import {
+  runWithSetting,
+  setTransactionSetting,
+} from '../../../common/request-scope/scoped-transaction.js';
 import type { Env } from '../../../config/env.js';
 import type {
   Customer,
@@ -74,9 +78,12 @@ export class CustomerOtpService {
       });
     }
 
-    const existing = await this.prisma.customer.findUnique({
-      where: { phoneE164: phone },
-    });
+    const existing = await runWithSetting(
+      this.prisma,
+      'app.customer_phone',
+      phone,
+      (tx) => tx.customer.findUnique({ where: { phoneE164: phone } }),
+    );
     const target = existing ?? (name ? { phone, name } : null);
     // Sin consumir el código: el front pide el nombre y lo reenvía.
     if (!target) throw new AppException('NAME_REQUIRED');
@@ -126,6 +133,7 @@ export class CustomerOtpService {
         });
         if (count === 0) throw new AppException('OTP_EXPIRED');
         if ('id' in customer) return customer;
+        await setTransactionSetting(tx, 'app.customer_phone', customer.phone);
         return tx.customer.create({
           data: {
             name: customer.name,

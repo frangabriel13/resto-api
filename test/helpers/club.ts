@@ -5,7 +5,7 @@ import { deriveKey } from './../../src/common/crypto.js';
 import { hashPassword } from './../../src/common/passwords.js';
 import type { StaffRole } from './../../src/generated/prisma/client.js';
 import { signStampToken } from './../../src/modules/stamps/stamp-token.js';
-import type { PrismaService } from './../../src/prisma/prisma.service.js';
+import type { PrismaAdminService } from './../../src/prisma/prisma-admin.service.js';
 import type { FakeOtpSender } from './fake-otp-sender.js';
 import { loginCustomer } from './sessions.js';
 
@@ -19,7 +19,7 @@ export type ClubMember = {
 
 // Comercio activo con regla de 8 sellos, cooldown de 60 minutos y su staff.
 export async function createClub(
-  prisma: PrismaService,
+  prisma: PrismaAdminService,
   slug: string,
   staff: [email: string, role: StaffRole][],
 ) {

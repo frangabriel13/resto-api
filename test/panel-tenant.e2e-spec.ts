@@ -16,6 +16,7 @@ import { hashPassword } from './../src/common/passwords.js';
 import { TenantContext } from './../src/common/tenant/tenant-context.js';
 import { Panel } from './../src/modules/auth/panel/panel.decorator.js';
 import { Roles } from './../src/modules/auth/panel/tenant.guard.js';
+import { PrismaAdminService } from './../src/prisma/prisma-admin.service.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
 import { loginStaff } from './helpers/sessions.js';
 
@@ -93,7 +94,7 @@ const PASSWORD = 'clave-correcta';
 
 describe('Panel: comercio seleccionado y aislamiento (e2e)', () => {
   let app: INestApplication<App>;
-  let prisma: PrismaService;
+  let prisma: PrismaAdminService;
   let ids: {
     cafe: string;
     heladeria: string;
@@ -109,7 +110,7 @@ describe('Panel: comercio seleccionado y aislamiento (e2e)', () => {
     }).compile();
     app = moduleRef.createNestApplication({ logger: false });
     await app.init();
-    prisma = moduleRef.get(PrismaService);
+    prisma = moduleRef.get(PrismaAdminService);
     ids = await createFixtures(prisma);
   });
 
@@ -269,8 +270,10 @@ describe('Panel: comercio seleccionado y aislamiento (e2e)', () => {
       const { cookie } = await login('empleado@cafe.com');
       await get('context', cookie).expect(200);
 
+      // El pool de runtime es el que reutilizan los requests.
+      const runtime = app.get(PrismaService);
       for (let i = 0; i < 5; i++) {
-        const [row] = await prisma.$queryRaw<{ setting: string | null }[]>`
+        const [row] = await runtime.$queryRaw<{ setting: string | null }[]>`
           SELECT current_setting('app.merchant_id', true) AS setting`;
         expect(row?.setting || null).toBeNull();
       }
@@ -297,7 +300,7 @@ describe('Panel: comercio seleccionado y aislamiento (e2e)', () => {
   });
 });
 
-async function createFixtures(prisma: PrismaService) {
+async function createFixtures(prisma: PrismaAdminService) {
   const passwordHash = await hashPassword(PASSWORD);
   const [cafe, heladeria] = await Promise.all(
     ['cafe', 'heladeria'].map((slug) =>

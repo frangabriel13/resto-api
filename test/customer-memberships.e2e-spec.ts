@@ -8,7 +8,7 @@ import { CustomerContext } from './../src/common/customer-scope/customer-context
 import type { MerchantStatus } from './../src/generated/prisma/client.js';
 import { CustomerRoute } from './../src/modules/auth/customer/customer-route.decorator.js';
 import { OTP_SENDER } from './../src/modules/auth/customer/otp-sender.js';
-import { PrismaService } from './../src/prisma/prisma.service.js';
+import { PrismaAdminService } from './../src/prisma/prisma-admin.service.js';
 import { FakeOtpSender } from './helpers/fake-otp-sender.js';
 import { LOCK_WAIT_MS, whileRowLocked } from './helpers/row-lock.js';
 import { loginCustomer } from './helpers/sessions.js';
@@ -62,7 +62,7 @@ type Club = {
 
 describe('Cliente: perfil y clubes (e2e)', () => {
   let app: INestApplication<App>;
-  let prisma: PrismaService;
+  let prisma: PrismaAdminService;
   let sender: FakeOtpSender;
   let cafe: Club;
   let heladeria: Club;
@@ -80,7 +80,7 @@ describe('Cliente: perfil y clubes (e2e)', () => {
       .compile();
     app = moduleRef.createNestApplication({ logger: false });
     await app.init();
-    prisma = moduleRef.get(PrismaService);
+    prisma = moduleRef.get(PrismaAdminService);
 
     cafe = await createClub('cafe', 'mostrador123');
     heladeria = await createClub('heladeria', 'helado123456');
