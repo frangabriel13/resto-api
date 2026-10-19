@@ -6,10 +6,10 @@ import type { Stamp, StampSource } from '../../generated/prisma/client.js';
 import { AuditService } from '../audit/audit.service.js';
 import {
   lastValidStampAt,
-  panelMembershipInclude,
   toPanelMembership,
   type MembershipForPanel,
 } from '../memberships/panel-membership.js';
+import { PanelMembershipsService } from '../memberships/panel-memberships.service.js';
 import { cooldownStatus } from './cooldown.js';
 import { StampTokenService } from './stamp-token.service.js';
 import type {
@@ -39,16 +39,17 @@ export class StampsService {
   constructor(
     private readonly tenant: TenantContext,
     private readonly tokens: StampTokenService,
+    private readonly memberships: PanelMembershipsService,
     private readonly audit: AuditService,
   ) {}
 
   // Solo lectura: lo que ve el empleado antes de confirmar.
   async scan(stampToken: string): Promise<ScanResult> {
-    const token = this.readToken(stampToken);
+    const token = this.tokens.readOrThrow(stampToken);
     if (token.expiresAt <= new Date()) {
       throw new AppException('STAMP_TOKEN_EXPIRED');
     }
-    const membership = await this.findMembership(
+    const membership = await this.memberships.find(
       token.membershipId,
       'CUSTOMER_OF_OTHER_MERCHANT',
     );
@@ -72,7 +73,7 @@ export class StampsService {
         'NOT_FOUND',
       );
     }
-    const token = this.readToken(body.stampToken);
+    const token = this.tokens.readOrThrow(body.stampToken);
     return this.grant(
       {
         membershipId: token.membershipId,
@@ -93,11 +94,10 @@ export class StampsService {
       throw new AppException('MERCHANT_READ_ONLY');
     const found = await db.stamp.findUnique({ where: { id: stampId } });
     if (!found) throw new AppException('NOT_FOUND');
-    // Mismo bloqueo que el sello y el canje: no se cruza con un canje en curso.
-    await this.lockMembership(found.membershipId);
+    await this.memberships.lock(found.membershipId);
 
     const stamp = await db.stamp.findUniqueOrThrow({ where: { id: stampId } });
-    const membership = await this.findMembership(
+    const membership = await this.memberships.find(
       stamp.membershipId,
       'NOT_FOUND',
     );
@@ -126,7 +126,7 @@ export class StampsService {
         voidedAt: voidedAt.toISOString(),
         voidReason: reason,
       },
-      membership: await this.panelView(stamp.membershipId),
+      membership: await this.memberships.view(stamp.membershipId),
     };
   }
 
@@ -136,13 +136,13 @@ export class StampsService {
   ): Promise<StampResult> {
     const { db } = this.tenant;
     const { merchantId, merchantStatus, staffUserId } = this.tenant.scope;
-    const { id: membershipId } = await this.findMembership(
+    const { id: membershipId } = await this.memberships.find(
       input.membershipId,
       notFound,
     );
     // Dos empleados con el mismo cliente quedan en fila: el segundo ve el
     // sello del primero (cooldown) o la misma idempotencyKey.
-    await this.lockMembership(membershipId);
+    await this.memberships.lock(membershipId);
 
     const existing = await db.stamp.findUnique({
       where: {
@@ -157,7 +157,7 @@ export class StampsService {
     if (input.tokenExpiresAt && input.tokenExpiresAt <= new Date()) {
       throw new AppException('STAMP_TOKEN_EXPIRED');
     }
-    const membership = await this.findMembership(membershipId, notFound);
+    const membership = await this.memberships.find(membershipId, notFound);
     if (membership.leftAt) throw new AppException('MEMBERSHIP_LEFT');
     if (merchantStatus !== 'ACTIVE')
       throw new AppException('MERCHANT_READ_ONLY');
@@ -213,7 +213,7 @@ export class StampsService {
         source: stamp.source,
         cooldownOverride: stamp.cooldownOverride,
       },
-      membership: await this.panelView(stamp.membershipId),
+      membership: await this.memberships.view(stamp.membershipId),
       replayed,
     };
   }
@@ -224,33 +224,5 @@ export class StampsService {
       this.tenant.scope.stampCooldownMinutes,
       new Date(),
     );
-  }
-
-  private readToken(stampToken: string) {
-    const token = this.tokens.read(stampToken);
-    if (!token) throw new AppException('STAMP_TOKEN_INVALID');
-    return token;
-  }
-
-  private async lockMembership(membershipId: string) {
-    await this.tenant.db
-      .$queryRaw`SELECT id FROM memberships WHERE id = ${membershipId}::uuid FOR UPDATE`;
-  }
-
-  private async findMembership(
-    id: string,
-    notFound: ErrorCode,
-  ): Promise<MembershipForPanel> {
-    const membership = await this.tenant.db.membership.findUnique({
-      where: { id },
-      include: panelMembershipInclude,
-    });
-    if (!membership) throw new AppException(notFound);
-    return membership;
-  }
-
-  private async panelView(membershipId: string) {
-    const membership = await this.findMembership(membershipId, 'NOT_FOUND');
-    return toPanelMembership(membership, this.tenant.scope.role);
   }
 }

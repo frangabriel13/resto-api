@@ -5,7 +5,7 @@ import {
   panelMembershipSchema,
 } from '../memberships/panel-membership.schemas.js';
 
-const stampTokenField = z.string().min(1).max(200);
+export const stampTokenField = z.string().min(1).max(200);
 const grantFields = {
   idempotencyKey: z.uuid(),
   // El empleado confirma que es otro consumo dentro del cooldown.
@@ -24,8 +24,10 @@ export const createStampBodySchema = z
   ])
   .meta({ id: 'CreateStampBody' });
 
+export const voidReasonField = z.string().trim().min(1).max(200);
+
 export const voidStampBodySchema = z
-  .object({ reason: z.string().trim().min(1).max(200) })
+  .object({ reason: voidReasonField })
   .meta({ id: 'VoidStampBody' });
 
 export const scanResultSchema = z

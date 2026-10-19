@@ -15,6 +15,7 @@ import { CustomersModule } from './modules/customers/customers.module.js';
 import { MembershipsModule } from './modules/memberships/memberships.module.js';
 import { PanelCustomersModule } from './modules/panel-customers/panel-customers.module.js';
 import { PiecesModule } from './modules/pieces/pieces.module.js';
+import { RedemptionsModule } from './modules/redemptions/redemptions.module.js';
 import { StampsModule } from './modules/stamps/stamps.module.js';
 import { RewardRulesModule } from './modules/reward-rules/reward-rules.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
@@ -40,6 +41,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     CustomersModule,
     MembershipsModule,
     StampsModule,
+    RedemptionsModule,
     PanelCustomersModule,
   ],
   providers: [

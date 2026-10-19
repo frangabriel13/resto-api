@@ -1,6 +1,9 @@
 import type { Prisma, StaffRole } from '../../generated/prisma/client.js';
 import { maskPhone } from '../customers/phone.js';
-import { calculateBalance } from './membership-balance.js';
+import {
+  calculateBalance,
+  type MembershipBalance,
+} from './membership-balance.js';
 import type { PanelMembership } from './panel-membership.schemas.js';
 
 export const panelMembershipInclude = {
@@ -14,17 +17,23 @@ export type MembershipForPanel = Prisma.MembershipGetPayload<{
   include: typeof panelMembershipInclude;
 }>;
 
-export function toPanelMembership(
+export function panelBalance(
   membership: MembershipForPanel,
-  role: StaffRole,
-): PanelMembership {
-  const { customer } = membership;
-  const balance = calculateBalance({
+): MembershipBalance {
+  return calculateBalance({
     membership,
     cycleRule: membership.currentCycleRewardRule,
     stamps: membership.stamps,
     redemptions: membership.redemptions,
   });
+}
+
+export function toPanelMembership(
+  membership: MembershipForPanel,
+  role: StaffRole,
+): PanelMembership {
+  const { customer } = membership;
+  const balance = panelBalance(membership);
   const phone = customer.phoneE164;
   return {
     id: membership.id,

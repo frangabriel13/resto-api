@@ -189,13 +189,17 @@ async function createMembership(
   demo: DemoCustomer,
   joinedAt: Date,
 ): Promise<string> {
-  const customer = await tx.customer.create({
-    data: {
+  const phoneE164 = `${DEMO_PHONE_PREFIX}${demo.phoneSuffix}`;
+  // Si quedó en otro comercio, deleteDemo no lo borró: se reutiliza.
+  const customer = await tx.customer.upsert({
+    where: { phoneE164 },
+    create: {
       name: demo.name,
-      phoneE164: `${DEMO_PHONE_PREFIX}${demo.phoneSuffix}`,
+      phoneE164,
       phoneVerifiedAt: joinedAt,
       createdAt: joinedAt,
     },
+    update: { name: demo.name },
   });
   const membership = await tx.membership.create({
     data: {
