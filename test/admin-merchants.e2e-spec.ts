@@ -82,6 +82,7 @@ describe('Admin: comercios y piezas (e2e)', () => {
       for (const body of [
         { name: 'Café', primaryColor: 'rojo' },
         { name: 'Café', logoUrl: 'http://logo.com/a.png' },
+        { name: 'Café', googleReviewUrl: 'https://otro-sitio.com/resena' },
         { name: 'Café', slug: 'Con Mayúsculas' },
         { name: 'Café', stampCooldownMinutes: -1 },
         { name: '¡¿?!' },

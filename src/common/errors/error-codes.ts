@@ -155,6 +155,19 @@ export const errorCatalog = {
     message:
       'Para activar el comercio tiene que tener una regla de premio activa.',
   },
+  RESET_TOKEN_INVALID: {
+    status: HttpStatus.BAD_REQUEST,
+    message: 'El link venció o ya se usó. Pedí uno nuevo.',
+  },
+  STAFF_IS_OWNER: {
+    status: HttpStatus.FORBIDDEN,
+    message: 'Los dueños se gestionan desde FullSync.',
+  },
+  STAFF_ACCOUNT_SHARED: {
+    status: HttpStatus.CONFLICT,
+    message:
+      'Esta persona también trabaja en otro comercio: el cambio de contraseña lo hace FullSync.',
+  },
   STAFF_ALREADY_IN_MERCHANT: {
     status: HttpStatus.CONFLICT,
     message: 'Esa persona ya forma parte del comercio.',

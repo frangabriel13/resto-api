@@ -139,6 +139,10 @@ export function describePanelIsolation(mode: string) {
         stamps: await prisma.stamp.findMany(byMerchant),
         redemptions: await prisma.redemption.findMany(byMerchant),
         audit: await prisma.auditEvent.count(byMerchant),
+        staff: await prisma.staffMembership.findMany(byMerchant),
+        staffUser: await prisma.staffUser.findUnique({
+          where: { id: heladeria.staffIds['empleado@heladeria.com'] },
+        }),
       };
     };
     const get = (cookie: string, path: string) =>
@@ -266,6 +270,54 @@ export function describePanelIsolation(mode: string) {
           redemptions: 0,
         });
       }
+    });
+
+    it('la configuración es solo la del propio comercio', async () => {
+      const res = await get(owner, '/panel/settings').expect(200);
+      expect(res.body.merchant.slug).toBe('cafe');
+
+      await request(app.getHttpServer())
+        .put('/panel/settings')
+        .set('Cookie', owner)
+        .send({
+          primaryColor: '#000000',
+          secondaryColor: null,
+          googleReviewUrl: null,
+          stampCooldownMinutes: 5,
+        })
+        .expect(200);
+      const updated = await prisma.merchant.findUniqueOrThrow({
+        where: { id: cafe.merchantId },
+      });
+      expect(updated.stampCooldownMinutes).toBe(5);
+    });
+
+    it('no ve ni gestiona empleados del otro comercio', async () => {
+      const otherId = heladeria.staffIds['empleado@heladeria.com']!;
+      const list = await get(owner, '/panel/staff').expect(200);
+      expect(list.body.map((m: { email: string }) => m.email).sort()).toEqual([
+        'duena@cafe.com',
+        'empleado@cafe.com',
+      ]);
+
+      await request(app.getHttpServer())
+        .patch(`/panel/staff/${otherId}`)
+        .set('Cookie', owner)
+        .send({ active: false })
+        .expect(404);
+      await post(owner, `/panel/staff/${otherId}/reset-password`, {}).expect(
+        404,
+      );
+    });
+
+    it('el export no trae clientes del otro comercio', async () => {
+      const res = await get(owner, '/panel/export').expect(200);
+      const rows = res.text
+        .replace(/^\uFEFF/, '')
+        .split('\r\n')
+        .slice(1);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatch(/^Ana;/);
     });
 
     it('no puede elegir un comercio al que no pertenece', async () => {

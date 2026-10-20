@@ -22,6 +22,7 @@ export interface SessionStore {
   renew(id: string, lastUsedAt: Date, expiresAt: Date): Promise<void>;
   revokeByTokenHash(tokenHash: string, revokedAt: Date): Promise<void>;
   revokeOthers(ownerId: string, keepId: string, revokedAt: Date): Promise<void>;
+  revokeAll(ownerId: string, revokedAt: Date): Promise<void>;
 }
 
 type SessionRow = Omit<SessionRecord, 'ownerId'>;
@@ -75,6 +76,12 @@ function storeFor<Row extends SessionRow>(
     async revokeOthers(ownerId, keepId, revokedAt) {
       await delegate.updateMany({
         where: { [ownerColumn]: ownerId, id: { not: keepId }, revokedAt: null },
+        data: { revokedAt },
+      });
+    },
+    async revokeAll(ownerId, revokedAt) {
+      await delegate.updateMany({
+        where: { [ownerColumn]: ownerId, revokedAt: null },
         data: { revokedAt },
       });
     },

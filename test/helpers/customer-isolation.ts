@@ -91,7 +91,7 @@ export function describeCustomerIsolation(mode: string) {
         where: { membership: { customerId: beto.customerId } },
       }),
     });
-    const asAna = (method: 'get' | 'post' | 'patch', path: string) =>
+    const asAna = (method: 'get' | 'post' | 'patch' | 'delete', path: string) =>
       request(app.getHttpServer())[method](path).set('Cookie', ana.cookie);
 
     it('su cuenta es la suya y solo cambia la suya', async () => {
@@ -139,6 +139,16 @@ export function describeCustomerIsolation(mode: string) {
         .expect(200);
       expect(joined.body.isNew).toBe(true);
       expect(joined.body.membership.id).not.toBe(betoHeladeria.membershipId);
+    });
+
+    it('no saca del club a otro cliente', async () => {
+      for (const { membershipId } of [beto, betoHeladeria]) {
+        await asAna('delete', `/me/memberships/${membershipId}`).expect(404);
+      }
+    });
+
+    it('borrar su cuenta no toca la de otro cliente', async () => {
+      await asAna('delete', '/me').expect(204);
     });
 
     it('su tarjeta no incluye sellos de otros clientes del mismo comercio', async () => {

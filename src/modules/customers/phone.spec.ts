@@ -1,4 +1,4 @@
-import { maskPhone, normalizeArMobile } from './phone.js';
+import { formatArNational, maskPhone, normalizeArMobile } from './phone.js';
 
 describe('normalizeArMobile', () => {
   it.each([
@@ -24,5 +24,11 @@ describe('maskPhone', () => {
   it('muestra el código de área y los últimos cuatro dígitos', () => {
     expect(maskPhone('+5491123456789')).toBe('11 ••• 6789');
     expect(maskPhone('+5493515123456')).toBe('351 ••• 3456');
+  });
+});
+
+describe('formatArNational', () => {
+  it('muestra el celular en formato nacional, sin el +', () => {
+    expect(formatArNational('+5491123456789')).toBe('011 15-2345-6789');
   });
 });

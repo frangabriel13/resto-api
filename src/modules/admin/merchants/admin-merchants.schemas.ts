@@ -1,10 +1,14 @@
 import { z } from 'zod';
 import { MerchantStatus } from '../../../generated/prisma/client.js';
+import {
+  colorSchema,
+  googleReviewUrlSchema,
+  httpsUrlSchema,
+  stampCooldownSchema,
+} from '../../merchants/merchant-fields.js';
 import { SLUG_MAX_LENGTH, SLUG_PATTERN } from '../../merchants/slug.js';
 
 const slugSchema = z.string().min(3).max(SLUG_MAX_LENGTH).regex(SLUG_PATTERN);
-const colorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/);
-const httpsUrlSchema = z.url({ protocol: /^https$/ }).max(500);
 
 const editableFields = {
   name: z.string().trim().min(1).max(100),
@@ -12,8 +16,8 @@ const editableFields = {
   logoUrl: httpsUrlSchema.nullable(),
   primaryColor: colorSchema.nullable(),
   secondaryColor: colorSchema.nullable(),
-  googleReviewUrl: httpsUrlSchema.nullable(),
-  stampCooldownMinutes: z.number().int().min(0).max(1440),
+  googleReviewUrl: googleReviewUrlSchema.nullable(),
+  stampCooldownMinutes: stampCooldownSchema,
 };
 
 export const createMerchantBodySchema = z

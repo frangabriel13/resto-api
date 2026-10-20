@@ -59,6 +59,18 @@ describe('validateEnv', () => {
     expect(validateEnv(validEnv).OTP_SENDER).toBe('console');
   });
 
+  it('en producción no acepta el envío de mails por consola ni un APP_URL sin https', () => {
+    const production = { ...validEnv, NODE_ENV: 'production' };
+    expect(() => validateEnv(production)).toThrow(/EMAIL_SENDER/);
+    expect(() =>
+      validateEnv({ ...production, APP_URL: 'http://clubsy.com' }),
+    ).toThrow(/APP_URL: en producción tiene que ser https/);
+    expect(validateEnv(validEnv)).toMatchObject({
+      EMAIL_SENDER: 'console',
+      APP_URL: 'http://localhost:3000',
+    });
+  });
+
   it('no muestra los valores en el mensaje de error', () => {
     try {
       validateEnv({ ...validEnv, DATABASE_URL: 'mysql://u:clave@h/db' });

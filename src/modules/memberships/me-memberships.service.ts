@@ -6,6 +6,7 @@ import {
   STAMP_TOKEN_REFRESH_SECONDS,
   StampTokenService,
 } from '../stamps/stamp-token.service.js';
+import { leaveClubData } from './leave-club.js';
 import { calculateBalance } from './membership-balance.js';
 import { cardInclude, toCard } from './membership-card.js';
 import type { MembershipCard } from './membership-card.schemas.js';
@@ -104,6 +105,20 @@ export class MeMembershipsService {
           },
         });
     return { membership: await this.summary(membership.id), isNew: true };
+  }
+
+  // Salir dos veces no es un error (doble toque).
+  async leave(membershipId: string): Promise<void> {
+    const { db } = this.customer;
+    const membership = await db.membership.findUnique({
+      where: { id: membershipId },
+    });
+    if (!membership) throw new AppException('NOT_FOUND');
+    if (membership.leftAt) return;
+    await db.membership.update({
+      where: { id: membershipId },
+      data: leaveClubData(membership, new Date()),
+    });
   }
 
   async updateConsent(
