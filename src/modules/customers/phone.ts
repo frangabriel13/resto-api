@@ -26,6 +26,11 @@ export function maskPhone(phoneE164: string): string {
   return areaCode ? `${areaCode} ••• ${last4}` : `••• ${last4}`;
 }
 
+// "011 15-2345-6789": legible y sin el "+" inicial, que Excel toma como fórmula.
+export function formatArNational(phoneE164: string): string {
+  return parsePhoneNumberFromString(phoneE164)?.formatNational() ?? phoneE164;
+}
+
 function isMobile(phone: PhoneNumber): boolean {
   return phone.isValid() && phone.getType() === 'MOBILE';
 }

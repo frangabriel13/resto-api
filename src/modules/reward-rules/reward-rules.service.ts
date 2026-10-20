@@ -3,6 +3,7 @@ import { AppException } from '../../common/errors/app.exception.js';
 import { TenantContext } from '../../common/tenant/tenant-context.js';
 import type { RewardRule } from '../../generated/prisma/client.js';
 import { AuditService } from '../audit/audit.service.js';
+import { isPanelEditable } from '../merchants/merchant-status.js';
 import type {
   CreateRewardRuleBody,
   RewardRuleResponse,
@@ -26,7 +27,7 @@ export class RewardRulesService {
   // membresías conservan la versión con la que arrancaron su ciclo.
   async create(body: CreateRewardRuleBody): Promise<RewardRuleResponse> {
     const { merchantId, merchantStatus } = this.tenant.scope;
-    if (merchantStatus !== 'DRAFT' && merchantStatus !== 'ACTIVE') {
+    if (!isPanelEditable(merchantStatus)) {
       throw new AppException('MERCHANT_READ_ONLY');
     }
     const db = this.tenant.db;

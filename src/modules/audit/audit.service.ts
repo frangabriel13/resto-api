@@ -10,9 +10,11 @@ export const AUDIT_ACTIONS = [
   'reward_rule.created',
   'staff.created',
   'staff.deactivated',
+  'staff.reactivated',
   'staff.password_reset',
   'merchant.created',
   'merchant.updated',
+  'merchant.customers_exported',
   'piece.created',
   'piece.updated',
 ] as const;

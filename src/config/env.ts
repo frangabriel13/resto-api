@@ -16,6 +16,11 @@ export const envSchema = z
     DATABASE_ADMIN_URL: postgresUrl,
     SECRET_KEY: z.string().min(32, 'tiene que tener al menos 32 caracteres'),
     OTP_SENDER: z.enum(['console']).default('console'),
+    EMAIL_SENDER: z.enum(['console']).default('console'),
+    // URL del front: arma los links de los mails.
+    APP_URL: z
+      .url({ protocol: /^https?$/, error: 'tiene que ser una URL http(s)://' })
+      .default('http://localhost:3000'),
   })
   .refine(
     (env) => env.NODE_ENV !== 'production' || env.OTP_SENDER !== 'console',
@@ -23,6 +28,17 @@ export const envSchema = z
       path: ['OTP_SENDER'],
       message: 'en producción no se puede usar el envío por consola',
     },
+  )
+  .refine(
+    (env) => env.NODE_ENV !== 'production' || env.EMAIL_SENDER !== 'console',
+    {
+      path: ['EMAIL_SENDER'],
+      message: 'en producción no se puede usar el envío por consola',
+    },
+  )
+  .refine(
+    (env) => env.NODE_ENV !== 'production' || env.APP_URL.startsWith('https:'),
+    { path: ['APP_URL'], message: 'en producción tiene que ser https' },
   );
 
 export type Env = z.infer<typeof envSchema>;

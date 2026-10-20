@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { MerchantStatus, StaffRole } from '../../../generated/prisma/client.js';
 
-const newPasswordSchema = z.string().min(8).max(128);
+export const newPasswordSchema = z.string().min(8).max(128);
 
 export const changeStaffPasswordBodySchema = z
   .object({

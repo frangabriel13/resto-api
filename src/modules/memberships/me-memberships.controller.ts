@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -66,6 +67,12 @@ export class MeMembershipsController {
     @Body({ schema: joinClubBodySchema }) body: JoinClubBody,
   ): Promise<JoinClubResult> {
     return this.memberships.join(body);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  leave(@Param('id', { schema: z.uuid() }) id: string): Promise<void> {
+    return this.memberships.leave(id);
   }
 
   @Patch(':id/consent')

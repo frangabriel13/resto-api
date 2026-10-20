@@ -19,7 +19,7 @@ import {
   type SessionRecord,
   type SessionStore,
 } from './session-stores.js';
-import { generateSessionToken, hashSessionToken } from './session-token.js';
+import { generateToken, hashToken } from '../../../common/tokens.js';
 
 const MAX_USER_AGENT_LENGTH = 512;
 
@@ -40,11 +40,11 @@ export class SessionService {
     req: Request,
     res: Response,
   ): Promise<AuthSession> {
-    const token = generateSessionToken();
+    const token = generateToken();
     const expiresAt = this.expiresFromNow(kind);
     const session = await this.stores[kind].create({
       ownerId,
-      tokenHash: hashSessionToken(token),
+      tokenHash: hashToken(token),
       expiresAt,
       userAgent: req.headers['user-agent']?.slice(0, MAX_USER_AGENT_LENGTH),
     });
@@ -60,9 +60,7 @@ export class SessionService {
     const token = readSessionCookie(req, kind);
     if (!token) return null;
 
-    const session = await this.stores[kind].findByTokenHash(
-      hashSessionToken(token),
-    );
+    const session = await this.stores[kind].findByTokenHash(hashToken(token));
     if (!session || !isActive(session)) {
       clearSessionCookie(res, kind, this.secureCookies);
       return null;
@@ -79,10 +77,7 @@ export class SessionService {
   async end(kind: SessionKind, req: Request, res: Response): Promise<void> {
     const token = readSessionCookie(req, kind);
     if (token) {
-      await this.stores[kind].revokeByTokenHash(
-        hashSessionToken(token),
-        new Date(),
-      );
+      await this.stores[kind].revokeByTokenHash(hashToken(token), new Date());
     }
     clearSessionCookie(res, kind, this.secureCookies);
   }
@@ -93,6 +88,11 @@ export class SessionService {
       session.sessionId,
       new Date(),
     );
+  }
+
+  // Por ejemplo, al resetearle la contraseña a alguien.
+  async endAll(kind: SessionKind, ownerId: string): Promise<void> {
+    await this.stores[kind].revokeAll(ownerId, new Date());
   }
 
   private expiresFromNow(kind: SessionKind): Date {

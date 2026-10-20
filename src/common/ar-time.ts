@@ -12,6 +12,14 @@ export function arDay(instant: Date): string {
   return new Date(instant.getTime() - AR_OFFSET_MS).toISOString().slice(0, 10);
 }
 
+// "2026-10-18 23:30", en hora de Buenos Aires.
+export function arDateTime(instant: Date): string {
+  return new Date(instant.getTime() - AR_OFFSET_MS)
+    .toISOString()
+    .slice(0, 16)
+    .replace('T', ' ');
+}
+
 export function shiftArDay(day: string, days: number): string {
   return new Date(Date.parse(`${day}T00:00:00Z`) + days * DAY_MS)
     .toISOString()

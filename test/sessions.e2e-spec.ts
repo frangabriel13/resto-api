@@ -23,7 +23,7 @@ import {
 } from './../src/modules/auth/sessions/session-kinds.js';
 import { SessionGuard } from './../src/modules/auth/sessions/session.guard.js';
 import { SessionService } from './../src/modules/auth/sessions/session.service.js';
-import { hashSessionToken } from './../src/modules/auth/sessions/session-token.js';
+import { hashToken } from './../src/common/tokens.js';
 import { PrismaAdminService } from './../src/prisma/prisma-admin.service.js';
 
 @Controller('test-sessions')
@@ -158,7 +158,7 @@ describe('Sesiones (e2e)', () => {
       expect(cookie.maxAge).toBeCloseTo(ttlMs / 1000, -1);
 
       const session = await findSession(kind);
-      expect(session.tokenHash).toBe(hashSessionToken(cookie.value));
+      expect(session.tokenHash).toBe(hashToken(cookie.value));
       expect(session.tokenHash).not.toContain(cookie.value);
     });
 

@@ -1,4 +1,4 @@
-import { arDay, arDaysOf, resolveArRange } from './ar-time.js';
+import { arDateTime, arDay, arDaysOf, resolveArRange } from './ar-time.js';
 
 const NOW = new Date('2026-10-19T15:00:00Z');
 
@@ -6,6 +6,14 @@ describe('arDay', () => {
   it('a las 23:30 de Buenos Aires sigue siendo el mismo día', () => {
     expect(arDay(new Date('2026-10-19T02:30:00Z'))).toBe('2026-10-18');
     expect(arDay(new Date('2026-10-19T03:00:00Z'))).toBe('2026-10-19');
+  });
+});
+
+describe('arDateTime', () => {
+  it('muestra la fecha y la hora de Buenos Aires', () => {
+    expect(arDateTime(new Date('2026-10-19T02:30:45Z'))).toBe(
+      '2026-10-18 23:30',
+    );
   });
 });
 

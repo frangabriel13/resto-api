@@ -13,10 +13,14 @@ import { AuditModule } from './modules/audit/audit.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { SessionsModule } from './modules/auth/sessions/sessions.module.js';
 import { CustomersModule } from './modules/customers/customers.module.js';
+import { EmailModule } from './modules/email/email.module.js';
+import { ExportModule } from './modules/export/export.module.js';
 import { MembershipsModule } from './modules/memberships/memberships.module.js';
 import { PanelCustomersModule } from './modules/panel-customers/panel-customers.module.js';
 import { PiecesModule } from './modules/pieces/pieces.module.js';
 import { RedemptionsModule } from './modules/redemptions/redemptions.module.js';
+import { SettingsModule } from './modules/settings/settings.module.js';
+import { StaffModule } from './modules/staff/staff.module.js';
 import { StatsModule } from './modules/stats/stats.module.js';
 import { StampsModule } from './modules/stamps/stamps.module.js';
 import { RewardRulesModule } from './modules/reward-rules/reward-rules.module.js';
@@ -36,6 +40,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     TenantModule,
     CustomerScopeModule,
     AuditModule,
+    EmailModule,
     AuthModule,
     AdminModule,
     RewardRulesModule,
@@ -47,6 +52,9 @@ import { PrismaModule } from './prisma/prisma.module.js';
     PanelCustomersModule,
     ActivityModule,
     StatsModule,
+    SettingsModule,
+    StaffModule,
+    ExportModule,
   ],
   providers: [
     // Registrados acá (y no en main.ts) para que los E2E se comporten igual.
