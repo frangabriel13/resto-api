@@ -59,6 +59,38 @@ describe('validateEnv', () => {
     expect(validateEnv(validEnv).OTP_SENDER).toBe('console');
   });
 
+  it('con OTP_SENDER=whatsapp exige el número, el token y la plantilla', () => {
+    const whatsapp = { ...validEnv, OTP_SENDER: 'whatsapp' };
+    expect(() => validateEnv(whatsapp)).toThrow(
+      /WHATSAPP_PHONE_NUMBER_ID: es obligatoria[\s\S]*WHATSAPP_ACCESS_TOKEN[\s\S]*WHATSAPP_TEMPLATE_NAME/,
+    );
+    expect(
+      validateEnv({
+        ...whatsapp,
+        WHATSAPP_PHONE_NUMBER_ID: '1234567890',
+        WHATSAPP_ACCESS_TOKEN: 'token',
+        WHATSAPP_TEMPLATE_NAME: 'clubsy_codigo',
+      }).WHATSAPP_TEMPLATE_LANGUAGE,
+    ).toBe('es_AR');
+  });
+
+  it('con EMAIL_SENDER=resend exige la API key y un remitente con email', () => {
+    const resend = { ...validEnv, EMAIL_SENDER: 'resend' };
+    expect(() => validateEnv(resend)).toThrow(
+      /RESEND_API_KEY: es obligatoria con EMAIL_SENDER=resend[\s\S]*EMAIL_FROM/,
+    );
+    expect(() =>
+      validateEnv({ ...resend, RESEND_API_KEY: 're_x', EMAIL_FROM: 'Clubsy' }),
+    ).toThrow(/EMAIL_FROM: tiene que incluir un email/);
+    expect(
+      validateEnv({
+        ...resend,
+        RESEND_API_KEY: 're_x',
+        EMAIL_FROM: 'Clubsy <no-reply@clubsy.test>',
+      }).EMAIL_SENDER,
+    ).toBe('resend');
+  });
+
   it('en producción no acepta el envío de mails por consola ni un APP_URL sin https', () => {
     const production = { ...validEnv, NODE_ENV: 'production' };
     expect(() => validateEnv(production)).toThrow(/EMAIL_SENDER/);
@@ -69,6 +101,30 @@ describe('validateEnv', () => {
       EMAIL_SENDER: 'console',
       APP_URL: 'http://localhost:3000',
     });
+  });
+
+  it('exige SENTRY_DSN en producción y una tasa de trazas entre 0 y 1', () => {
+    expect(() => validateEnv({ ...validEnv, NODE_ENV: 'production' })).toThrow(
+      /SENTRY_DSN: en producción es obligatorio/,
+    );
+    expect(() =>
+      validateEnv({ ...validEnv, SENTRY_TRACES_SAMPLE_RATE: '2' }),
+    ).toThrow(/SENTRY_TRACES_SAMPLE_RATE/);
+    expect(validateEnv(validEnv).SENTRY_TRACES_SAMPLE_RATE).toBe(0);
+  });
+
+  it('una variable vacía cuenta como no definida', () => {
+    const env = validateEnv({
+      ...validEnv,
+      OTP_SENDER: '',
+      WHATSAPP_PHONE_NUMBER_ID: '',
+      EMAIL_FROM: '',
+    });
+    expect(env.OTP_SENDER).toBe('console');
+    expect(env.WHATSAPP_PHONE_NUMBER_ID).toBeUndefined();
+    expect(() => validateEnv({ ...validEnv, SECRET_KEY: '' })).toThrow(
+      /SECRET_KEY/,
+    );
   });
 
   it('no muestra los valores en el mensaje de error', () => {

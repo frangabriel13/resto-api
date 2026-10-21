@@ -2,7 +2,9 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { SentryModule } from '@sentry/nestjs/setup';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter.js';
+import { ErrorsModule } from './common/errors/errors.module.js';
 import { CustomerScopeModule } from './common/customer-scope/customer-scope.module.js';
 import { TenantModule } from './common/tenant/tenant.module.js';
 import { createValidationPipe } from './common/validation.js';
@@ -15,6 +17,7 @@ import { SessionsModule } from './modules/auth/sessions/sessions.module.js';
 import { CustomersModule } from './modules/customers/customers.module.js';
 import { EmailModule } from './modules/email/email.module.js';
 import { ExportModule } from './modules/export/export.module.js';
+import { HealthModule } from './modules/health/health.module.js';
 import { MembershipsModule } from './modules/memberships/memberships.module.js';
 import { PanelCustomersModule } from './modules/panel-customers/panel-customers.module.js';
 import { PiecesModule } from './modules/pieces/pieces.module.js';
@@ -28,6 +31,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
 
 @Module({
   imports: [
+    SentryModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
@@ -35,6 +39,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     }),
     // Los límites se definen por ruta con @Throttle + ThrottlerGuard.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
+    ErrorsModule,
     PrismaModule,
     SessionsModule,
     TenantModule,
@@ -55,6 +60,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     SettingsModule,
     StaffModule,
     ExportModule,
+    HealthModule,
   ],
   providers: [
     // Registrados acá (y no en main.ts) para que los E2E se comporten igual.

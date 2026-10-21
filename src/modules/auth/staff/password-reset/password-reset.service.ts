@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppException } from '../../../../common/errors/app.exception.js';
+import { ErrorReporter } from '../../../../common/errors/error-reporter.js';
 import { hashPassword } from '../../../../common/passwords.js';
 import { runWithSetting } from '../../../../common/request-scope/scoped-transaction.js';
 import { generateToken, hashToken } from '../../../../common/tokens.js';
@@ -23,6 +24,7 @@ export class PasswordResetService {
     private readonly prisma: PrismaService,
     private readonly sessions: SessionService,
     @Inject(EMAIL_SENDER) private readonly sender: EmailSender,
+    private readonly reporter: ErrorReporter,
     config: ConfigService<Env, true>,
   ) {
     this.appUrl = config.get('APP_URL', { infer: true });
@@ -48,6 +50,7 @@ export class PasswordResetService {
     );
     this.sender.send(message).catch((error: unknown) => {
       this.logger.error('No se pudo mandar el mail de recuperación', error);
+      this.reporter.report(error);
     });
   }
 

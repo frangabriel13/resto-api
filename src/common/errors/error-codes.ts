@@ -65,6 +65,10 @@ export const errorCatalog = {
     status: HttpStatus.TOO_MANY_REQUESTS,
     message: 'Pediste demasiados códigos. Probá de nuevo más tarde.',
   },
+  OTP_DELIVERY_FAILED: {
+    status: HttpStatus.BAD_GATEWAY,
+    message: 'No pudimos mandar el código. Probá de nuevo en un rato.',
+  },
   NAME_REQUIRED: {
     status: HttpStatus.BAD_REQUEST,
     message: 'Decinos tu nombre para crear tu cuenta.',

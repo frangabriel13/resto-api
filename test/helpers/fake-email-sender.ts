@@ -5,8 +5,10 @@ import type {
 
 export class FakeEmailSender implements EmailSender {
   readonly sent: EmailMessage[] = [];
+  failing = false;
 
   send(message: EmailMessage) {
+    if (this.failing) return Promise.reject(new Error('Resend respondió 500'));
     this.sent.push(message);
     return Promise.resolve();
   }

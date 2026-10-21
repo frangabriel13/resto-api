@@ -184,6 +184,21 @@ describe('Cliente: código por teléfono (e2e)', () => {
     expect(sender.sent).toHaveLength(2);
   });
 
+  it('si el envío falla no queda el código pedido: se reintenta sin esperar y el anterior sigue valiendo', async () => {
+    await requestCode().expect(200);
+    const first = sender.lastCode;
+    await ageChallenges(MINUTE);
+
+    sender.failing = true;
+    const failed = await requestCode().expect(502);
+    expect(failed.body.code).toBe('OTP_DELIVERY_FAILED');
+    expect(await prisma.otpChallenge.count()).toBe(1);
+
+    sender.failing = false;
+    await verify({ code: first, name: 'Ana' }).expect(200);
+    await requestCode().expect(200);
+  });
+
   it('el límite por hora cuenta también los códigos ya usados', async () => {
     await prisma.otpChallenge.createMany({
       data: [10, 20, 30, 40, 50].map((minutesAgo) => ({
