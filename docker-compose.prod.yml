@@ -1,0 +1,40 @@
+# Producción (Coolify). Cada servicio recibe solo sus variables: la URL del
+# rol dueño de las tablas la tiene únicamente `migrate`.
+services:
+  migrate:
+    build:
+      context: .
+      target: migrate
+    environment:
+      MIGRATE_DATABASE_URL: ${MIGRATE_DATABASE_URL:?}
+    restart: 'no'
+
+  api:
+    build:
+      context: .
+      target: runtime
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: ${DATABASE_URL:?}
+      DATABASE_ADMIN_URL: ${DATABASE_ADMIN_URL:?}
+      SECRET_KEY: ${SECRET_KEY:?}
+      APP_URL: ${APP_URL:?}
+      OTP_SENDER: ${OTP_SENDER:?}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN:-}
+      WHATSAPP_TEMPLATE_NAME: ${WHATSAPP_TEMPLATE_NAME:-}
+      WHATSAPP_TEMPLATE_LANGUAGE: ${WHATSAPP_TEMPLATE_LANGUAGE:-es_AR}
+      EMAIL_SENDER: ${EMAIL_SENDER:?}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      SENTRY_DSN: ${SENTRY_DSN:?}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0}
+      SOURCE_COMMIT: ${SOURCE_COMMIT:-}
+    expose:
+      - '3001'
+    restart: unless-stopped

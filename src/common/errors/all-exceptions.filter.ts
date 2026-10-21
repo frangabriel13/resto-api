@@ -10,17 +10,22 @@ import type { Response } from 'express';
 import type { ApiError } from './api-error.schema.js';
 import { AppException } from './app.exception.js';
 import { errorCatalog, type ErrorCode } from './error-codes.js';
+import { ErrorReporter } from './error-reporter.js';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
 
+  constructor(private readonly reporter: ErrorReporter) {}
+
   catch(exception: unknown, host: ArgumentsHost) {
     const body = this.toApiError(exception);
+    // Solo lo inesperado: los 4xx son parte del funcionamiento normal.
     if (body.statusCode >= 500) {
       this.logger.error(
         exception instanceof Error ? exception.stack : String(exception),
       );
+      this.reporter.report(exception);
     }
     host
       .switchToHttp()

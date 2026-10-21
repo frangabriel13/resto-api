@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
+import { ErrorReporter } from './../src/common/errors/error-reporter.js';
 import { EMAIL_SENDER } from './../src/modules/email/email-sender.js';
 import { PrismaAdminService } from './../src/prisma/prisma-admin.service.js';
 import { createClub, STAFF_PASSWORD } from './helpers/club.js';
@@ -15,13 +16,17 @@ describe('Recuperar la contraseña del dueño (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaAdminService;
   let emails: FakeEmailSender;
+  const reported: unknown[] = [];
   let cafe: Awaited<ReturnType<typeof createClub>>;
 
   beforeEach(async () => {
     emails = new FakeEmailSender();
+    reported.length = 0;
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(EMAIL_SENDER)
       .useValue(emails)
+      .overrideProvider(ErrorReporter)
+      .useValue({ report: (error: unknown) => reported.push(error) })
       .compile();
     app = moduleRef.createNestApplication({ logger: false });
     await app.init();
@@ -85,6 +90,15 @@ describe('Recuperar la contraseña del dueño (e2e)', () => {
     }
     expect(emails.sent).toHaveLength(0);
     expect(await prisma.passwordResetToken.count()).toBe(0);
+  });
+
+  it('si el mail no sale responde igual y queda reportado', async () => {
+    emails.failing = true;
+
+    await requestReset('duena@cafe.com').expect(204);
+
+    await vi.waitFor(() => expect(reported).toHaveLength(1));
+    expect(String(reported[0])).not.toContain('duena@cafe.com');
   });
 
   it('un pedido nuevo antes de un minuto no manda otro mail; después sí, y el anterior deja de valer', async () => {
