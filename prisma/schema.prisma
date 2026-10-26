@@ -24,6 +24,48 @@ enum StaffRole {
   @@map("staff_role")
 }
 
+// A dónde redirige la pieza al escanearla. CLUBSY es el comportamiento
+// original (lleva al alta o a la tarjeta del club); los demás son un
+// redirect de servidor directo a destination_url, sin pasar por el club.
+enum PieceDestinationType {
+  CLUBSY
+  GOOGLE_REVIEWS
+  WHATSAPP
+  OTHER
+
+  @@map("piece_destination_type")
+}
+
+enum NfcChipType {
+  NTAG213
+  NTAG215
+  NTAG216
+
+  @@map("nfc_chip_type")
+}
+
+// Progreso comercial del chip físico, separado de `active` (que solo dice
+// si el redirect/landing funciona hoy). PENDING/PROGRAMMED/DELIVERED es el
+// camino de una pieza vendida; REPLACED retira un chip roto o perdido (lo
+// reemplaza una pieza nueva con otro código, ver `replacesPieceId`).
+enum PieceFulfillmentStatus {
+  PENDING
+  PROGRAMMED
+  DELIVERED
+  REPLACED
+
+  @@map("piece_fulfillment_status")
+}
+
+enum SalePaymentStatus {
+  PENDING
+  PAID
+  PARTIAL
+  CANCELED
+
+  @@map("sale_payment_status")
+}
+
 model Merchant {
   id                   String         @id @default(uuid(7)) @db.Uuid
   name                 String
@@ -34,15 +76,23 @@ model Merchant {
   googleReviewUrl      String?        @map("google_review_url")
   stampCooldownMinutes Int            @default(60) @map("stamp_cooldown_minutes")
   status               MerchantStatus @default(DRAFT)
+  // CRM de venta de tags NFC (lo usa /admin, no el panel del comercio).
+  contactName          String?        @map("contact_name")
+  contactEmail         String?        @map("contact_email")
+  contactPhone         String?        @map("contact_phone")
+  salesNotes           String?        @map("sales_notes") @db.Text
+  nextActionAt         DateTime?      @map("next_action_at") @db.Timestamptz(3)
   createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt            DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   staffMemberships StaffMembership[]
   memberships      Membership[]
   pieces           Piece[]
+  pieceScans       PieceScan[]
   rewardRules      RewardRule[]
   stamps           Stamp[]
   redemptions      Redemption[]
+  sales            Sale[]
   auditEvents      AuditEvent[]
 
   @@map("merchants")
@@ -129,6 +179,7 @@ model PlatformAdmin {
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   sessions PlatformAdminSession[]
+  sales    Sale[]
 
   @@map("platform_admins")
 }
@@ -251,15 +302,87 @@ model Piece {
   type       PieceType @default(NFC_QR)
   label      String
   active     Boolean   @default(true)
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  // Redirect: CLUBSY mantiene el comportamiento original (sin destinationUrl);
+  // los demás tipos exigen destinationUrl y /p/{publicCode} redirige de una
+  // sin pasar por el club (CHECK agregado a mano en la migración).
+  destinationType PieceDestinationType @default(CLUBSY) @map("destination_type")
+  destinationUrl  String?              @map("destination_url")
+
+  // Chip físico: contraseña cifrada de forma reversible (no es un hash: un
+  // admin autorizado la tiene que poder recuperar para reprogramarlo con NFC
+  // Tools). La deriva `deriveKey(SECRET_KEY, 'piece.nfc_password')`.
+  nfcChipType           NfcChipType @default(NTAG215) @map("nfc_chip_type")
+  nfcPasswordEncrypted  String?     @map("nfc_password_encrypted")
+
+  // Progreso comercial, separado de `active` (ver el enum). saleId es
+  // opcional: las piezas del club de siempre no vienen de una venta.
+  fulfillmentStatus PieceFulfillmentStatus @default(DELIVERED) @map("fulfillment_status")
+  saleId            String?                @map("sale_id") @db.Uuid
+  programmedAt      DateTime?              @map("programmed_at") @db.Timestamptz(3)
+  deliveredAt       DateTime?              @map("delivered_at") @db.Timestamptz(3)
+  // Pieza nueva que reemplaza a esta (chip roto o perdido); esta queda
+  // inactiva y en REPLACED, ver AdminPiecesService.replace.
+  replacesPieceId String? @unique @map("replaces_piece_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   merchant          Merchant     @relation(fields: [merchantId], references: [id])
+  sale              Sale?        @relation(fields: [saleId], references: [id])
+  replacesPiece     Piece?       @relation("PieceReplacement", fields: [replacesPieceId], references: [id])
+  replacedByPiece   Piece?       @relation("PieceReplacement")
   joinedMemberships Membership[]
+  scans             PieceScan[]
 
   @@unique([id, merchantId])
   @@index([merchantId])
+  @@index([saleId])
   @@map("pieces")
+}
+
+// Venta de uno o más tags NFC a un comercio. Lo gestiona /admin (Clubsy
+// vendiéndole al comercio), no el panel del comercio: no tiene por qué
+// verla el dueño del local.
+model Sale {
+  id            String            @id @default(uuid(7)) @db.Uuid
+  merchantId    String            @map("merchant_id") @db.Uuid
+  product       String
+  tagCount      Int               @default(1) @map("tag_count")
+  amount        Decimal?          @db.Decimal(12, 2)
+  paymentMethod String?           @map("payment_method")
+  paymentStatus SalePaymentStatus @default(PENDING) @map("payment_status")
+  soldByAdminId String?           @map("sold_by_admin_id") @db.Uuid
+  notes         String?           @db.Text
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  merchant Merchant       @relation(fields: [merchantId], references: [id])
+  soldBy   PlatformAdmin? @relation(fields: [soldByAdminId], references: [id])
+  pieces   Piece[]
+
+  @@index([merchantId])
+  @@map("sales")
+}
+
+// Log de escaneo de una pieza (cualquier tipo, club incluido). Sin cookies
+// ni datos personales: la IP solo queda como hash salteado y truncado.
+model PieceScan {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  pieceId     String   @map("piece_id") @db.Uuid
+  merchantId  String   @map("merchant_id") @db.Uuid
+  userAgent   String?  @map("user_agent")
+  referer     String?
+  ipHash      String?  @map("ip_hash")
+  possibleBot Boolean  @default(false) @map("possible_bot")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  piece    Piece    @relation(fields: [pieceId, merchantId], references: [id, merchantId])
+  merchant Merchant @relation(fields: [merchantId], references: [id])
+
+  @@index([pieceId, createdAt])
+  @@index([merchantId, createdAt])
+  @@map("piece_scans")
 }
 
 model RewardRule {

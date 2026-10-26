@@ -141,6 +141,14 @@ export const errorCatalog = {
     message:
       'El club está pausado o finalizado: el panel está en modo consulta.',
   },
+  INVALID_DESTINATION_URL: {
+    status: HttpStatus.BAD_REQUEST,
+    message: 'La URL de destino no es válida para este tipo.',
+  },
+  PIECE_ALREADY_REPLACED: {
+    status: HttpStatus.CONFLICT,
+    message: 'Esta pieza ya fue reemplazada.',
+  },
   SLUG_TAKEN: {
     status: HttpStatus.CONFLICT,
     message: 'Ya hay un comercio con ese slug.',

@@ -31,3 +31,11 @@ export const publicPieceSchema = z
   .meta({ id: 'PublicPiece' });
 
 export type PublicPiece = z.infer<typeof publicPieceSchema>;
+
+// Lo consulta el middleware del front antes de renderizar nada: si
+// redirect es true, hace un 307 de servidor a url sin pasar por la página.
+export const pieceVisitSchema = z
+  .object({ redirect: z.boolean(), url: z.string().optional() })
+  .meta({ id: 'PieceVisit' });
+
+export type PieceVisit = z.infer<typeof pieceVisitSchema>;
