@@ -99,6 +99,36 @@ describe('Admin: comercios y piezas (e2e)', () => {
       expect(repeated.body.code).toBe('SLUG_TAKEN');
     });
 
+    it('si el slug que sale del nombre ya existe, le suma un número', async () => {
+      const slugs = [];
+      for (let i = 0; i < 3; i++) slugs.push((await createMerchant()).slug);
+
+      expect(slugs).toEqual([
+        'cafe-la-esquina',
+        'cafe-la-esquina-2',
+        'cafe-la-esquina-3',
+      ]);
+    });
+
+    it('filtra el listado por estado del club', async () => {
+      const active = await createMerchant({ name: 'Activo' });
+      await createMerchant({ name: 'En preparación' });
+      await addActiveRule(active.id);
+      await send('patch', `/admin/merchants/${active.id}`, {
+        status: 'ACTIVE',
+      }).expect(200);
+
+      const names = async (status: string) =>
+        (
+          await send('get', `/admin/merchants?status=${status}`).expect(200)
+        ).body.map((m: { name: string }) => m.name);
+
+      expect(await names('ACTIVE')).toEqual(['Activo']);
+      expect(await names('DRAFT')).toEqual(['En preparación']);
+      expect(await names('ENDED')).toEqual([]);
+      await send('get', '/admin/merchants?status=OTRO').expect(400);
+    });
+
     it('lista los comercios con su regla activa y sus dueños', async () => {
       const configured = await createMerchant({ name: 'Configurado' });
       await createMerchant({ name: 'Nuevo' });

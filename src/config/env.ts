@@ -33,6 +33,14 @@ export const envSchema = z
     DATABASE_URL: postgresUrl,
     DATABASE_ADMIN_URL: postgresUrl,
     SECRET_KEY: z.string().min(32, 'tiene que tener al menos 32 caracteres'),
+    // Cifra las contraseñas NFC de las piezas. Aparte de SECRET_KEY: rotar esa
+    // no las pierde. Si esta se pierde, no se recuperan.
+    NFC_PASSWORD_KEY: z
+      .string()
+      .regex(
+        /^[0-9a-fA-F]{64}$/,
+        'tienen que ser 64 caracteres hexadecimales (openssl rand -hex 32)',
+      ),
     OTP_SENDER: z.enum(['console', 'whatsapp']).default('console'),
     WHATSAPP_PHONE_NUMBER_ID: z
       .string()

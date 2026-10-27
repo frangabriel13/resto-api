@@ -149,7 +149,7 @@ export class MeMembershipsService {
   private async findPieceId(merchantId: string, publicCode?: string) {
     if (!publicCode) return null;
     const piece = await this.customer.db.piece.findFirst({
-      where: { publicCode, merchantId, active: true },
+      where: { publicCode, merchantId, active: true, destination: 'CLUB' },
     });
     return piece?.id ?? null;
   }

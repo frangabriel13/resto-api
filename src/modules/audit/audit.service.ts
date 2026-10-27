@@ -15,8 +15,10 @@ export const AUDIT_ACTIONS = [
   'merchant.created',
   'merchant.updated',
   'merchant.customers_exported',
+  'merchant_profile.updated',
   'piece.created',
   'piece.updated',
+  'piece.nfc_password_revealed',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

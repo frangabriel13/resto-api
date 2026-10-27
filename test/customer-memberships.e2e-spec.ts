@@ -313,6 +313,28 @@ describe('Cliente: perfil y clubes (e2e)', () => {
       });
       expect(membership.joinedViaPieceId).toBeNull();
     });
+
+    it('una pieza que no es del club no se registra como origen', async () => {
+      await prisma.piece.create({
+        data: {
+          merchantId: cafe.merchantId,
+          publicCode: 'resenas12345',
+          label: 'Cartel de reseñas',
+          destination: 'GOOGLE_REVIEWS',
+          googleReviewUrl: 'https://g.page/r/cafe/review',
+        },
+      });
+
+      const res = await join(ana.cookie, {
+        merchantId: cafe.merchantId,
+        pieceCode: 'resenas12345',
+      }).expect(200);
+
+      const membership = await prisma.membership.findUniqueOrThrow({
+        where: { id: res.body.membership.id },
+      });
+      expect(membership.joinedViaPieceId).toBeNull();
+    });
   });
 
   describe('mis clubes y consentimiento', () => {

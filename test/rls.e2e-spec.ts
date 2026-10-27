@@ -5,7 +5,7 @@ import {
   runWithSetting,
   type ScopeSetting,
 } from './../src/common/request-scope/scoped-transaction.js';
-import type { Prisma } from './../src/generated/prisma/client.js';
+import { Prisma } from './../src/generated/prisma/client.js';
 import { PrismaAdminService } from './../src/prisma/prisma-admin.service.js';
 import { PrismaService } from './../src/prisma/prisma.service.js';
 
@@ -15,7 +15,10 @@ const WITH_RLS = [
   'audit_events',
   'customers',
   'memberships',
+  'merchant_profiles',
   'merchants',
+  'piece_nfc_passwords',
+  'piece_scans',
   'pieces',
   'redemptions',
   'reward_rules',
@@ -33,6 +36,9 @@ const WITHOUT_RLS = [
   'staff_users',
 ];
 const RLS_VIOLATION = /row-level security/;
+const PERMISSION_DENIED = /permission denied/;
+// Sin permisos para resto_app y con RLS sin políticas: solo las usa el admin.
+const ADMIN_ONLY = ['merchant_profiles', 'piece_nfc_passwords', 'piece_scans'];
 
 type Club = {
   merchantId: string;
@@ -202,6 +208,35 @@ describe('Row Level Security (e2e)', () => {
     await as('app.customer_phone', newPhone, (tx) =>
       tx.customer.create({ data: { name: 'Nuevo', phoneE164: newPhone } }),
     );
+  });
+
+  it('las tablas solo del admin están cerradas para la app en cualquier contexto', async () => {
+    await admin.merchantProfile.create({
+      data: { merchantId: a.merchantId, notes: 'Solo para el admin' },
+    });
+    const attempts = ADMIN_ONLY.flatMap((table) => [
+      (tx: Prisma.TransactionClient) =>
+        tx.$queryRaw`SELECT * FROM ${Prisma.raw(table)}`,
+      (tx: Prisma.TransactionClient) =>
+        tx.$executeRaw`INSERT INTO ${Prisma.raw(table)} DEFAULT VALUES`,
+      (tx: Prisma.TransactionClient) =>
+        tx.$executeRaw`DELETE FROM ${Prisma.raw(table)}`,
+    ]);
+    const contexts: [ScopeSetting, string][] = [
+      ['app.merchant_id', a.merchantId],
+      ['app.customer_id', a.customerId],
+      ['app.staff_user_id', a.staffUserId],
+      ['app.customer_phone', a.phone],
+    ];
+
+    for (const attempt of attempts) {
+      await expect(attempt(runtime)).rejects.toThrow(PERMISSION_DENIED);
+      for (const [setting, value] of contexts) {
+        await expect(as(setting, value, attempt)).rejects.toThrow(
+          PERMISSION_DENIED,
+        );
+      }
+    }
   });
 
   it('un usuario de staff ve sus comercios y nada del dominio', async () => {

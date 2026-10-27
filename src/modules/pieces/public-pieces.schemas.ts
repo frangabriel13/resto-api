@@ -21,10 +21,12 @@ const clubSchema = z.object({
     .nullable(),
 });
 
-// Sin datos del club si la pieza está inactiva o el comercio no abrió.
+// Sin datos del club si la pieza está inactiva, lleva a otro destino o el
+// comercio no abrió.
 export const publicPieceSchema = z
   .discriminatedUnion('state', [
     z.object({ state: z.literal('PIECE_INACTIVE') }),
+    z.object({ state: z.literal('REDIRECT'), url: z.string() }),
     z.object({ state: z.literal('CLUB_NOT_OPEN') }),
     clubSchema,
   ])
