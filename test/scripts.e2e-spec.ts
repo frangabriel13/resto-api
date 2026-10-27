@@ -11,6 +11,12 @@ import {
 } from './../scripts/lib/demo/demo-fixtures.js';
 import { seedDemo } from './../scripts/lib/demo/seed-demo.js';
 import { createOrResetPlatformAdmin } from './../scripts/lib/platform-admin.js';
+import { decryptNfcPassword } from './../src/modules/pieces/nfc-password.js';
+
+const DEMO_OPTIONS = {
+  staffPassword: 'clave-demo',
+  nfcPasswordKey: Buffer.alloc(32, 7),
+};
 
 describe('Scripts de datos (e2e)', () => {
   let moduleRef: TestingModule;
@@ -40,17 +46,29 @@ describe('Scripts de datos (e2e)', () => {
     });
 
     it('crea el comercio activo con su regla, pieza, staff y clientes [DEMO]', async () => {
-      await seedDemo(prisma, { staffPassword: 'clave-demo' });
+      await seedDemo(prisma, DEMO_OPTIONS);
 
       const merchant = await prisma.merchant.findUniqueOrThrow({
         where: { slug: DEMO_MERCHANT_SLUG },
-        include: { rewardRules: true, pieces: true, staffMemberships: true },
+        include: {
+          rewardRules: true,
+          pieces: { include: { nfcPassword: true } },
+          staffMemberships: true,
+        },
       });
       expect(merchant.status).toBe('ACTIVE');
       expect(merchant.rewardRules).toMatchObject([
         { version: 1, active: true, stampsRequired: 8 },
       ]);
       expect(merchant.pieces).toHaveLength(1);
+      const [piece] = merchant.pieces;
+      expect(
+        decryptNfcPassword(
+          DEMO_OPTIONS.nfcPasswordKey,
+          piece!.id,
+          piece!.nfcPassword!.encrypted,
+        ),
+      ).toMatch(/^[0-9A-F]{8}$/);
       expect(merchant.staffMemberships.map((m) => m.role).sort()).toEqual([
         'EMPLOYEE',
         'OWNER',
@@ -84,7 +102,7 @@ describe('Scripts de datos (e2e)', () => {
     });
 
     it('cada cliente queda con el saldo que muestra la demo', async () => {
-      await seedDemo(prisma, { staffPassword: 'clave-demo' });
+      await seedDemo(prisma, DEMO_OPTIONS);
       const memberships = await prisma.membership.findMany({
         include: {
           customer: true,
@@ -120,15 +138,36 @@ describe('Scripts de datos (e2e)', () => {
     });
 
     it('se puede correr varias veces y queda igual', async () => {
-      await seedDemo(prisma, { staffPassword: 'clave-demo' });
+      await seedDemo(prisma, DEMO_OPTIONS);
       const first = await counts();
-      await seedDemo(prisma, { staffPassword: 'clave-demo' });
+      await seedDemo(prisma, DEMO_OPTIONS);
       expect(await counts()).toEqual(first);
       expect(first.merchants).toBe(1);
     });
 
+    it('se puede volver a correr aunque tenga ficha y escaneos', async () => {
+      await seedDemo(prisma, DEMO_OPTIONS);
+      const demo = await prisma.merchant.findUniqueOrThrow({
+        where: { slug: DEMO_MERCHANT_SLUG },
+      });
+      const piece = await prisma.piece.findFirstOrThrow({
+        where: { merchantId: demo.id },
+      });
+      await prisma.merchantProfile.create({
+        data: { merchantId: demo.id, notes: 'Cargada desde el admin' },
+      });
+      await prisma.pieceScan.create({
+        data: { pieceId: piece.id, merchantId: demo.id, destination: 'CLUB' },
+      });
+
+      await seedDemo(prisma, DEMO_OPTIONS);
+      expect(await prisma.merchantProfile.count()).toBe(0);
+      expect(await prisma.pieceScan.count()).toBe(0);
+      expect(await prisma.pieceNfcPassword.count()).toBe(1);
+    });
+
     it('reutiliza a un cliente [DEMO] que también está en otro comercio', async () => {
-      await seedDemo(prisma, { staffPassword: 'clave-demo' });
+      await seedDemo(prisma, DEMO_OPTIONS);
       const demoCustomer = await prisma.customer.findFirstOrThrow({
         where: { name: '[DEMO] Ana Gómez' },
       });
@@ -153,7 +192,7 @@ describe('Scripts de datos (e2e)', () => {
       });
       const before = await counts();
 
-      await seedDemo(prisma, { staffPassword: 'clave-demo' });
+      await seedDemo(prisma, DEMO_OPTIONS);
 
       expect(await counts()).toEqual(before);
       const demoMemberships = await prisma.membership.findMany({
@@ -180,8 +219,8 @@ describe('Scripts de datos (e2e)', () => {
         data: { email: 'real@otro.com', passwordHash: 'x', name: 'Real' },
       });
 
-      await seedDemo(prisma, { staffPassword: 'clave-demo' });
-      await seedDemo(prisma, { staffPassword: 'clave-demo' });
+      await seedDemo(prisma, DEMO_OPTIONS);
+      await seedDemo(prisma, DEMO_OPTIONS);
 
       await expect(
         prisma.merchant.findUnique({ where: { id: other.id } }),

@@ -2,6 +2,7 @@ import { validateEnv } from './env.js';
 
 const validEnv = {
   SECRET_KEY: 'una-clave-de-prueba-de-mas-de-32-caracteres',
+  NFC_PASSWORD_KEY: 'ab'.repeat(32),
   DATABASE_URL: 'postgresql://resto_app:secreto-app@localhost:5434/resto_club',
   DATABASE_ADMIN_URL:
     'postgresql://resto_app_admin:secreto-admin@localhost:5434/resto_club',
@@ -27,6 +28,16 @@ describe('validateEnv', () => {
     expect(() => validateEnv({ DATABASE_URL: validEnv.DATABASE_URL })).toThrow(
       /DATABASE_ADMIN_URL/,
     );
+  });
+
+  it('exige la clave de las contraseñas NFC en hexadecimal', () => {
+    const { NFC_PASSWORD_KEY: _, ...withoutKey } = validEnv;
+    expect(() => validateEnv(withoutKey)).toThrow(/NFC_PASSWORD_KEY/);
+    for (const key of ['ab'.repeat(31), 'zz'.repeat(32), 'ab'.repeat(33)]) {
+      expect(() => validateEnv({ ...validEnv, NFC_PASSWORD_KEY: key })).toThrow(
+        /NFC_PASSWORD_KEY: tienen que ser 64 caracteres hexadecimales/,
+      );
+    }
   });
 
   it('falla si la URL no es de Postgres', () => {

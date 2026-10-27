@@ -10,3 +10,13 @@ export function slugify(name: string): string {
     .slice(0, SLUG_MAX_LENGTH)
     .replace(/^-+|-+$/g, '');
 }
+
+// "cafe" → "cafe-2", recortando la base para no pasar el largo máximo.
+export function slugWithSuffix(base: string, n: number): string {
+  if (n === 1) return base;
+  const suffix = `-${n}`;
+  const trimmed = base
+    .slice(0, SLUG_MAX_LENGTH - suffix.length)
+    .replace(/-+$/, '');
+  return `${trimmed}${suffix}`;
+}

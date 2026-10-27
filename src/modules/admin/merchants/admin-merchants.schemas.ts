@@ -7,6 +7,10 @@ import {
   stampCooldownSchema,
 } from '../../merchants/merchant-fields.js';
 import { SLUG_MAX_LENGTH, SLUG_PATTERN } from '../../merchants/slug.js';
+import {
+  merchantProfileSchema,
+  profileBodySchema,
+} from './merchant-profile.js';
 
 const slugSchema = z.string().min(3).max(SLUG_MAX_LENGTH).regex(SLUG_PATTERN);
 
@@ -18,6 +22,7 @@ const editableFields = {
   secondaryColor: colorSchema.nullable(),
   googleReviewUrl: googleReviewUrlSchema.nullable(),
   stampCooldownMinutes: stampCooldownSchema,
+  profile: profileBodySchema,
 };
 
 export const createMerchantBodySchema = z
@@ -44,6 +49,7 @@ export const merchantSchema = z
     status: z.enum(MerchantStatus),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
+    profile: merchantProfileSchema,
   })
   .meta({ id: 'Merchant' });
 

@@ -5,6 +5,7 @@ import { AdminOwnersController } from './owners/admin-owners.controller.js';
 import { AdminOwnersService } from './owners/admin-owners.service.js';
 import { AdminPiecesController } from './pieces/admin-pieces.controller.js';
 import { AdminPiecesService } from './pieces/admin-pieces.service.js';
+import { NfcPasswordsService } from './pieces/nfc-passwords.service.js';
 
 @Module({
   controllers: [
@@ -12,6 +13,11 @@ import { AdminPiecesService } from './pieces/admin-pieces.service.js';
     AdminPiecesController,
     AdminOwnersController,
   ],
-  providers: [AdminMerchantsService, AdminPiecesService, AdminOwnersService],
+  providers: [
+    AdminMerchantsService,
+    AdminPiecesService,
+    AdminOwnersService,
+    NfcPasswordsService,
+  ],
 })
 export class AdminModule {}

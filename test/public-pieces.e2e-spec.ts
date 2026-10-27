@@ -122,4 +122,88 @@ describe('Entrada pública por pieza (e2e)', () => {
     const res = await find('no-existe').expect(404);
     expect(res.body.code).toBe('NOT_FOUND');
   });
+
+  describe('escaneos', () => {
+    const REVIEW_URL = 'https://g.page/r/cafe/review';
+
+    beforeEach(async () => {
+      await prisma.piece.createMany({
+        data: [
+          {
+            merchantId,
+            publicCode: 'resenas12345',
+            label: 'Cartel de reseñas',
+            destination: 'GOOGLE_REVIEWS',
+            googleReviewUrl: REVIEW_URL,
+          },
+          {
+            merchantId,
+            publicCode: 'instaviejo12',
+            label: 'Instagram viejo',
+            destination: 'INSTAGRAM',
+            instagramUsername: 'cafe',
+            active: false,
+          },
+        ],
+      });
+    });
+
+    const scan = (code: string) =>
+      request(app.getHttpServer()).post(`/public/pieces/${code}/scans`);
+    const scans = () =>
+      prisma.pieceScan.findMany({
+        include: { piece: { select: { publicCode: true } } },
+        orderBy: { scannedAt: 'asc' },
+      });
+
+    it('un destino externo redirige y queda registrado, sin caché', async () => {
+      const res = await scan('resenas12345').expect(200);
+
+      expect(res.body).toEqual({ state: 'REDIRECT', url: REVIEW_URL });
+      expect(res.headers['cache-control']).toBe('no-store');
+      expect(await scans()).toMatchObject([
+        {
+          merchantId,
+          destination: 'GOOGLE_REVIEWS',
+          piece: { publicCode: 'resenas12345' },
+        },
+      ]);
+    });
+
+    it('redirige aunque el club no esté abierto o haya terminado', async () => {
+      for (const status of ['DRAFT', 'ENDED'] as const) {
+        await setStatus(status);
+        const res = await scan('resenas12345').expect(200);
+        expect(res.body).toEqual({ state: 'REDIRECT', url: REVIEW_URL });
+      }
+      expect(await scans()).toHaveLength(2);
+    });
+
+    it('una pieza del club responde lo mismo que la consulta y queda registrada', async () => {
+      const scanned = await scan('mostrador123').expect(200);
+      const found = await find('mostrador123').expect(200);
+
+      expect(scanned.body).toEqual(found.body);
+      expect(await scans()).toMatchObject([{ destination: 'CLUB' }]);
+    });
+
+    it('una pieza inactiva no redirige ni se registra', async () => {
+      const res = await scan('instaviejo12').expect(200);
+
+      expect(res.body).toEqual({ state: 'PIECE_INACTIVE' });
+      expect(await scans()).toEqual([]);
+    });
+
+    it('consultar la pieza no registra un escaneo, aunque redirija', async () => {
+      const res = await find('resenas12345').expect(200);
+
+      expect(res.body).toEqual({ state: 'REDIRECT', url: REVIEW_URL });
+      expect(await scans()).toEqual([]);
+    });
+
+    it('un código inexistente da 404 y no registra nada', async () => {
+      await scan('no-existe').expect(404);
+      expect(await scans()).toEqual([]);
+    });
+  });
 });

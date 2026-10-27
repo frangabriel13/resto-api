@@ -1,4 +1,9 @@
-import { SLUG_MAX_LENGTH, SLUG_PATTERN, slugify } from './slug.js';
+import {
+  SLUG_MAX_LENGTH,
+  SLUG_PATTERN,
+  slugify,
+  slugWithSuffix,
+} from './slug.js';
 
 describe('slugify', () => {
   it.each([
@@ -18,5 +23,20 @@ describe('slugify', () => {
 
   it('devuelve vacío si el nombre no tiene letras ni números', () => {
     expect(slugify('¡¿?!')).toBe('');
+  });
+});
+
+describe('slugWithSuffix', () => {
+  it('el primero queda igual y los siguientes llevan el número', () => {
+    expect(slugWithSuffix('cafe', 1)).toBe('cafe');
+    expect(slugWithSuffix('cafe', 2)).toBe('cafe-2');
+    expect(slugWithSuffix('cafe', 12)).toBe('cafe-12');
+  });
+
+  it('recorta la base para no pasar el largo máximo, sin guiones dobles', () => {
+    const base = `${'a'.repeat(SLUG_MAX_LENGTH - 4)}-bcd`;
+    const slug = slugWithSuffix(base, 10);
+    expect(slug).toBe(`${'a'.repeat(SLUG_MAX_LENGTH - 4)}-10`);
+    expect(slug).toMatch(SLUG_PATTERN);
   });
 });

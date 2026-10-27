@@ -5,6 +5,10 @@ import type {
 } from '../../../src/generated/prisma/client.js';
 import { hashPassword } from '../../../src/common/passwords.js';
 import {
+  encryptNfcPassword,
+  generateNfcPassword,
+} from '../../../src/modules/pieces/nfc-password.js';
+import {
   DEMO_CUSTOMERS,
   DEMO_EMPLOYEE_EMAIL,
   DEMO_MERCHANT,
@@ -41,7 +45,7 @@ const DAY = 24 * 60 * MINUTE;
 
 export async function seedDemo(
   prisma: PrismaClient,
-  options: { staffPassword: string; now?: Date },
+  options: { staffPassword: string; nfcPasswordKey: Buffer; now?: Date },
 ): Promise<DemoSummary> {
   const passwordHash = await hashPassword(options.staffPassword);
   const now = options.now ?? new Date();
@@ -50,6 +54,17 @@ export async function seedDemo(
     async (tx) => {
       await deleteDemo(tx);
       const ctx = await createClub(tx, passwordHash, now);
+      await tx.pieceNfcPassword.create({
+        data: {
+          pieceId: ctx.pieceId,
+          merchantId: ctx.merchantId,
+          encrypted: encryptNfcPassword(
+            options.nfcPasswordKey,
+            ctx.pieceId,
+            generateNfcPassword(),
+          ),
+        },
+      });
       for (const [index, demo] of DEMO_CUSTOMERS.entries()) {
         await createCustomerHistory(ctx, demo, index);
       }
@@ -89,9 +104,12 @@ async function deleteMerchantData(tx: Tx, merchantId: string) {
     where: { selectedMerchantId: merchantId },
   });
   await tx.staffMembership.deleteMany(byMerchant);
+  await tx.pieceScan.deleteMany(byMerchant);
+  await tx.pieceNfcPassword.deleteMany(byMerchant);
   await tx.piece.deleteMany(byMerchant);
   await tx.rewardRule.deleteMany(byMerchant);
   await tx.auditEvent.deleteMany(byMerchant);
+  await tx.merchantProfile.deleteMany(byMerchant);
   await tx.merchant.delete({ where: { id: merchantId } });
 }
 

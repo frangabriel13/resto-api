@@ -6,9 +6,11 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
-import { ApiResponse } from '@nestjs/swagger';
+import { ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { z } from 'zod';
+import { MerchantStatus } from '../../../generated/prisma/client.js';
 import { AdminOnly } from '../../auth/admin/admin-only.decorator.js';
 import { Auth } from '../../auth/sessions/auth.decorator.js';
 import type { AuthSession } from '../../auth/sessions/session-kinds.js';
@@ -30,12 +32,16 @@ export class AdminMerchantsController {
   constructor(private readonly merchants: AdminMerchantsService) {}
 
   @Get()
+  @ApiQuery({ name: 'status', required: false, enum: MerchantStatus })
   @ApiResponse({
     status: HttpStatus.OK,
     standardSchema: z.array(merchantSummarySchema),
   })
-  list(): Promise<MerchantSummary[]> {
-    return this.merchants.list();
+  list(
+    @Query('status', { schema: z.enum(MerchantStatus).optional() })
+    status?: MerchantStatus,
+  ): Promise<MerchantSummary[]> {
+    return this.merchants.list(status);
   }
 
   @Get(':id')

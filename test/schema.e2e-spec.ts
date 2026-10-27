@@ -2,6 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AppModule } from './../src/app.module.js';
 import { PrismaAdminService } from './../src/prisma/prisma-admin.service.js';
 
+// Cerradas para resto_app: solo las usa el admin.
+const ADMIN_ONLY = ['merchant_profiles', 'piece_nfc_passwords', 'piece_scans'];
+const CRUD = ['SELECT', 'INSERT', 'UPDATE', 'DELETE'];
+// La contraseña NFC es fija: ni el admin la modifica.
+const ADMIN_PRIVILEGES: Record<string, string[]> = {
+  piece_nfc_passwords: ['SELECT', 'INSERT', 'DELETE'],
+};
+
 describe('Schema de la base (e2e)', () => {
   let moduleRef: TestingModule;
   let prisma: PrismaAdminService;
@@ -19,15 +27,17 @@ describe('Schema de la base (e2e)', () => {
   });
 
   describe('permisos', () => {
-    it('todas las tablas son del migrador y los dos roles de la API pueden leer y escribir', async () => {
+    it('todas las tablas son del migrador y los roles de la API leen y escriben las suyas', async () => {
       const rows = await prisma.$queryRaw<
-        { table: string; owner: string; apiCanReadWrite: boolean }[]
+        { table: string; owner: string; app: string[]; admin: string[] }[]
       >`
         SELECT tablename AS table, tableowner AS owner,
-          (SELECT bool_and(has_table_privilege(role, format('%I.%I', schemaname, tablename), privilege))
-           FROM unnest(ARRAY['resto_app', 'resto_app_admin']) AS role,
-                unnest(ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE']) AS privilege
-          ) AS "apiCanReadWrite"
+          ARRAY(SELECT privilege FROM unnest(${CRUD}::text[]) AS privilege
+                WHERE has_table_privilege('resto_app', format('%I.%I', schemaname, tablename), privilege)
+          ) AS app,
+          ARRAY(SELECT privilege FROM unnest(${CRUD}::text[]) AS privilege
+                WHERE has_table_privilege('resto_app_admin', format('%I.%I', schemaname, tablename), privilege)
+          ) AS admin
         FROM pg_tables
         WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'
         ORDER BY tablename`;
@@ -37,9 +47,12 @@ describe('Schema de la base (e2e)', () => {
         'customer_sessions',
         'customers',
         'memberships',
+        'merchant_profiles',
         'merchants',
         'otp_challenges',
         'password_reset_tokens',
+        'piece_nfc_passwords',
+        'piece_scans',
         'pieces',
         'platform_admin_sessions',
         'platform_admins',
@@ -52,9 +65,11 @@ describe('Schema de la base (e2e)', () => {
       ]);
       // Si una tabla fuera de un rol de la API, ese rol ignoraría RLS.
       for (const row of rows) {
-        expect(row).toMatchObject({
+        expect(row).toEqual({
+          table: row.table,
           owner: 'resto_migrator',
-          apiCanReadWrite: true,
+          app: ADMIN_ONLY.includes(row.table) ? [] : CRUD,
+          admin: ADMIN_PRIVILEGES[row.table] ?? CRUD,
         });
       }
     });
@@ -314,6 +329,65 @@ describe('Schema de la base (e2e)', () => {
           },
         }),
         'staff_sessions_staff_user_id_selected_merchant_id_fkey',
+      );
+    });
+
+    it('una pieza tiene solo el campo de su destino', async () => {
+      const piece = (code: string, data: Record<string, unknown>) =>
+        prisma.piece.create({
+          data: {
+            merchantId: ids.merchantA,
+            publicCode: code,
+            label: 'Cartel',
+            ...data,
+          },
+        });
+
+      for (const [code, data] of [
+        ['sin-link', { destination: 'GOOGLE_REVIEWS' }],
+        ['club-con-ig', { instagramUsername: 'cafe' }],
+        [
+          'ig-con-mensaje',
+          {
+            destination: 'INSTAGRAM',
+            instagramUsername: 'cafe',
+            whatsappMessage: 'Hola',
+          },
+        ],
+      ] as const) {
+        await expectRejected(
+          piece(code, data),
+          'pieces_destination_fields_check',
+        );
+      }
+      await piece('whatsapp', {
+        destination: 'WHATSAPP',
+        whatsappPhoneE164: '+5491123456789',
+      });
+    });
+
+    it('la ficha comercial rechaza datos de Google imposibles o sin fecha', async () => {
+      const takenOn = new Date('2026-10-20');
+      const profile = (data: Record<string, unknown>) =>
+        prisma.merchantProfile.create({
+          data: { merchantId: ids.merchantA, ...data },
+        });
+
+      await expectRejected(
+        profile({ googleRatingInitial: 5.5, googleDataTakenOn: takenOn }),
+        'merchant_profiles_google_rating_initial_check',
+      );
+      await expectRejected(
+        profile({ googleReviewsInitial: -1, googleDataTakenOn: takenOn }),
+        'merchant_profiles_google_reviews_initial_check',
+      );
+      await expectRejected(
+        profile({ googleRatingInitial: 4.5 }),
+        'merchant_profiles_google_data_taken_on_check',
+      );
+      await expectRejected(
+        profile({ googleDataTakenOn: takenOn }),
+        'merchant_profiles_google_data_taken_on_check',
       );
     });
   });

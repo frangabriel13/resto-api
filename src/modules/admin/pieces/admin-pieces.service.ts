@@ -5,11 +5,19 @@ import type { Piece, Prisma } from '../../../generated/prisma/client.js';
 import { PrismaAdminService } from '../../../prisma/prisma-admin.service.js';
 import { AuditService } from '../../audit/audit.service.js';
 import { generatePieceCode } from '../../pieces/piece-code.js';
+import {
+  changedDestinationFields,
+  redirectUrl,
+  toDestination,
+  toDestinationData,
+} from '../../pieces/piece-destination.js';
 import type {
   CreatePieceBody,
+  NfcPasswordResponse,
   PieceResponse,
   UpdatePieceBody,
 } from './admin-pieces.schemas.js';
+import { NfcPasswordsService } from './nfc-passwords.service.js';
 
 const CODE_ATTEMPTS = 3;
 
@@ -18,6 +26,7 @@ export class AdminPiecesService {
   constructor(
     private readonly prisma: PrismaAdminService,
     private readonly audit: AuditService,
+    private readonly nfcPasswords: NfcPasswordsService,
   ) {}
 
   async list(merchantId: string): Promise<PieceResponse[]> {
@@ -51,16 +60,42 @@ export class AdminPiecesService {
     body: UpdatePieceBody,
   ): Promise<PieceResponse> {
     return this.prisma.$transaction(async (tx) => {
-      const found = await tx.piece.findFirst({
-        where: { id: pieceId, merchantId },
-      });
-      if (!found) throw new AppException('NOT_FOUND');
+      const found = await findInMerchant(tx, merchantId, pieceId);
+      const { destination, ...fields } = body;
+      const destinationData = destination && toDestinationData(destination);
       const piece = await tx.piece.update({
         where: { id: pieceId },
-        data: body,
+        data: { ...fields, ...destinationData },
       });
-      await this.recordAudit(tx, adminId, piece, 'piece.updated', body);
+      // Del destino, solo qué cambió: el WhatsApp puede ser un celular personal.
+      await this.recordAudit(tx, adminId, piece, 'piece.updated', {
+        ...fields,
+        ...(destinationData && {
+          destination: piece.destination,
+          destinationFields: changedDestinationFields(found, destinationData),
+        }),
+      });
       return toResponse(piece);
+    });
+  }
+
+  // La contraseña nunca va en la auditoría: solo que alguien la vio.
+  async revealNfcPassword(
+    adminId: string,
+    merchantId: string,
+    pieceId: string,
+  ): Promise<NfcPasswordResponse> {
+    return this.prisma.$transaction(async (tx) => {
+      const piece = await findInMerchant(tx, merchantId, pieceId);
+      const { password, generated } = await this.nfcPasswords.reveal(tx, piece);
+      await this.recordAudit(
+        tx,
+        adminId,
+        piece,
+        'piece.nfc_password_revealed',
+        { generated },
+      );
+      return { password };
     });
   }
 
@@ -75,11 +110,14 @@ export class AdminPiecesService {
           merchantId,
           label: body.label,
           publicCode: generatePieceCode(),
+          ...(body.destination && toDestinationData(body.destination)),
         },
       });
+      await this.nfcPasswords.create(tx, piece);
       await this.recordAudit(tx, adminId, piece, 'piece.created', {
         label: piece.label,
         publicCode: piece.publicCode,
+        destination: piece.destination,
       });
       return toResponse(piece);
     });
@@ -89,7 +127,7 @@ export class AdminPiecesService {
     tx: Prisma.TransactionClient,
     adminId: string,
     piece: Piece,
-    action: 'piece.created' | 'piece.updated',
+    action: 'piece.created' | 'piece.updated' | 'piece.nfc_password_revealed',
     payload: Prisma.InputJsonObject,
   ) {
     return this.audit.recordAdmin(tx, adminId, piece.merchantId, {
@@ -108,13 +146,28 @@ export class AdminPiecesService {
   }
 }
 
+async function findInMerchant(
+  tx: Prisma.TransactionClient,
+  merchantId: string,
+  pieceId: string,
+): Promise<Piece> {
+  const piece = await tx.piece.findFirst({
+    where: { id: pieceId, merchantId },
+  });
+  if (!piece) throw new AppException('NOT_FOUND');
+  return piece;
+}
+
 function toResponse(piece: Piece): PieceResponse {
+  const destination = toDestination(piece);
   return {
     id: piece.id,
     publicCode: piece.publicCode,
     type: piece.type,
     label: piece.label,
     active: piece.active,
+    destination,
+    redirectUrl: redirectUrl(destination),
     createdAt: piece.createdAt.toISOString(),
   };
 }

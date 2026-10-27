@@ -1,13 +1,42 @@
 import { Injectable } from '@nestjs/common';
 import { AppException } from '../../common/errors/app.exception.js';
+import type {
+  Merchant,
+  Piece,
+  RewardRule,
+} from '../../generated/prisma/client.js';
 import { PrismaAdminService } from '../../prisma/prisma-admin.service.js';
+import { redirectUrl, toDestination } from './piece-destination.js';
 import type { PublicPiece } from './public-pieces.schemas.js';
+
+type PieceWithClub = Piece & {
+  merchant: Merchant & { rewardRules: RewardRule[] };
+};
 
 @Injectable()
 export class PublicPiecesService {
   constructor(private readonly prisma: PrismaAdminService) {}
 
   async findByCode(publicCode: string): Promise<PublicPiece> {
+    return toPublicPiece(await this.findOrFail(publicCode));
+  }
+
+  // Lo llama el front una vez por escaneo; una pieza inactiva no tiene destino.
+  async scan(publicCode: string): Promise<PublicPiece> {
+    const piece = await this.findOrFail(publicCode);
+    if (piece.active) {
+      await this.prisma.pieceScan.create({
+        data: {
+          pieceId: piece.id,
+          merchantId: piece.merchantId,
+          destination: piece.destination,
+        },
+      });
+    }
+    return toPublicPiece(piece);
+  }
+
+  private async findOrFail(publicCode: string): Promise<PieceWithClub> {
     const piece = await this.prisma.piece.findUnique({
       where: { publicCode },
       include: {
@@ -17,31 +46,38 @@ export class PublicPiecesService {
       },
     });
     if (!piece) throw new AppException('NOT_FOUND');
-    if (!piece.active) return { state: 'PIECE_INACTIVE' };
-
-    const { merchant } = piece;
-    if (merchant.status === 'DRAFT') return { state: 'CLUB_NOT_OPEN' };
-
-    const [rule] = merchant.rewardRules;
-    return {
-      state: merchant.status,
-      canJoin: merchant.status === 'ACTIVE',
-      merchant: {
-        id: merchant.id,
-        name: merchant.name,
-        slug: merchant.slug,
-        logoUrl: merchant.logoUrl,
-        primaryColor: merchant.primaryColor,
-        secondaryColor: merchant.secondaryColor,
-        googleReviewUrl: merchant.googleReviewUrl,
-      },
-      rewardRule: rule
-        ? {
-            stampsRequired: rule.stampsRequired,
-            rewardDescription: rule.rewardDescription,
-            conditions: rule.conditions,
-          }
-        : null,
-    };
+    return piece;
   }
+}
+
+// Los destinos externos no dependen del estado del club.
+function toPublicPiece(piece: PieceWithClub): PublicPiece {
+  if (!piece.active) return { state: 'PIECE_INACTIVE' };
+  const url = redirectUrl(toDestination(piece));
+  if (url) return { state: 'REDIRECT', url };
+
+  const { merchant } = piece;
+  if (merchant.status === 'DRAFT') return { state: 'CLUB_NOT_OPEN' };
+
+  const [rule] = merchant.rewardRules;
+  return {
+    state: merchant.status,
+    canJoin: merchant.status === 'ACTIVE',
+    merchant: {
+      id: merchant.id,
+      name: merchant.name,
+      slug: merchant.slug,
+      logoUrl: merchant.logoUrl,
+      primaryColor: merchant.primaryColor,
+      secondaryColor: merchant.secondaryColor,
+      googleReviewUrl: merchant.googleReviewUrl,
+    },
+    rewardRule: rule
+      ? {
+          stampsRequired: rule.stampsRequired,
+          rewardDescription: rule.rewardDescription,
+          conditions: rule.conditions,
+        }
+      : null,
+  };
 }

@@ -44,8 +44,28 @@ model Merchant {
   stamps           Stamp[]
   redemptions      Redemption[]
   auditEvents      AuditEvent[]
+  profile          MerchantProfile?
+  pieceScans       PieceScan[]
 
   @@map("merchants")
+}
+
+// Ficha comercial: solo para el admin (cerrada para resto_app, ver la migración).
+model MerchantProfile {
+  merchantId           String    @id @map("merchant_id") @db.Uuid
+  contactName          String?   @map("contact_name")
+  contactPhoneE164     String?   @map("contact_phone_e164")
+  address              String?
+  googleRatingInitial  Decimal?  @map("google_rating_initial") @db.Decimal(2, 1)
+  googleReviewsInitial Int?      @map("google_reviews_initial")
+  googleDataTakenOn    DateTime? @map("google_data_taken_on") @db.Date
+  notes                String?
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  merchant Merchant @relation(fields: [merchantId], references: [id])
+
+  @@map("merchant_profiles")
 }
 
 model StaffUser {
@@ -228,6 +248,16 @@ enum PieceType {
   @@map("piece_type")
 }
 
+// A dónde lleva la pieza al escanearla; los externos redirigen sin mirar el club.
+enum PieceDestination {
+  CLUB
+  GOOGLE_REVIEWS
+  INSTAGRAM
+  WHATSAPP
+
+  @@map("piece_destination")
+}
+
 enum StampSource {
   QR_SCAN
   MANUAL
@@ -254,12 +284,52 @@ model Piece {
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  merchant          Merchant     @relation(fields: [merchantId], references: [id])
+  // Solo el campo del destino elegido tiene valor (CHECK en la migración).
+  destination       PieceDestination @default(CLUB)
+  googleReviewUrl   String?          @map("google_review_url")
+  instagramUsername String?          @map("instagram_username")
+  whatsappPhoneE164 String?          @map("whatsapp_phone_e164")
+  whatsappMessage   String?          @map("whatsapp_message")
+
+  merchant          Merchant          @relation(fields: [merchantId], references: [id])
   joinedMemberships Membership[]
+  scans             PieceScan[]
+  nfcPassword       PieceNfcPassword?
 
   @@unique([id, merchantId])
   @@index([merchantId])
   @@map("pieces")
+}
+
+// Cerrada para resto_app (pieces es de lectura pública). Fija: cambiarla
+// dejaría el chip con una contraseña desconocida.
+model PieceNfcPassword {
+  pieceId    String   @id @map("piece_id") @db.Uuid
+  merchantId String   @map("merchant_id") @db.Uuid
+  // AES-256-GCM con NFC_PASSWORD_KEY: "v1.<iv>.<tag>.<cifrado>".
+  encrypted  String
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  piece Piece @relation(fields: [pieceId, merchantId], references: [id, merchantId])
+
+  @@unique([pieceId, merchantId])
+  @@map("piece_nfc_passwords")
+}
+
+// Cerrada para resto_app: la escribe la lectura pública de piezas (resto_app_admin).
+model PieceScan {
+  id          String           @id @default(uuid(7)) @db.Uuid
+  pieceId     String           @map("piece_id") @db.Uuid
+  merchantId  String           @map("merchant_id") @db.Uuid
+  destination PieceDestination
+  scannedAt   DateTime         @default(now()) @map("scanned_at") @db.Timestamptz(3)
+
+  piece    Piece    @relation(fields: [pieceId, merchantId], references: [id, merchantId])
+  merchant Merchant @relation(fields: [merchantId], references: [id])
+
+  @@index([pieceId, scannedAt])
+  @@index([merchantId, scannedAt])
+  @@map("piece_scans")
 }
 
 model RewardRule {
