@@ -18,6 +18,17 @@ const editableFields = {
   secondaryColor: colorSchema.nullable(),
   googleReviewUrl: googleReviewUrlSchema.nullable(),
   stampCooldownMinutes: stampCooldownSchema,
+  // CRM de venta de tags NFC: lo edita /admin, no tiene que ver con el club.
+  contactName: z.string().trim().min(1).max(100).nullable(),
+  contactEmail: z.email().max(200).nullable(),
+  contactPhone: z.string().trim().min(1).max(30).nullable(),
+  salesNotes: z.string().trim().max(5000).nullable(),
+  // String en la API, Date para Prisma: se convierte acá así el service
+  // puede pasar el body entero tal cual a $transaction.merchant.update/create.
+  nextActionAt: z.iso
+    .datetime()
+    .nullable()
+    .transform((value) => (value === null ? null : new Date(value))),
 };
 
 export const createMerchantBodySchema = z
@@ -42,6 +53,11 @@ export const merchantSchema = z
     googleReviewUrl: z.string().nullable(),
     stampCooldownMinutes: z.number().int(),
     status: z.enum(MerchantStatus),
+    contactName: z.string().nullable(),
+    contactEmail: z.string().nullable(),
+    contactPhone: z.string().nullable(),
+    salesNotes: z.string().nullable(),
+    nextActionAt: z.iso.datetime().nullable(),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
   })

@@ -40,11 +40,13 @@ describe('Schema de la base (e2e)', () => {
         'merchants',
         'otp_challenges',
         'password_reset_tokens',
+        'piece_scans',
         'pieces',
         'platform_admin_sessions',
         'platform_admins',
         'redemptions',
         'reward_rules',
+        'sales',
         'staff_memberships',
         'staff_sessions',
         'staff_users',
@@ -301,6 +303,40 @@ describe('Schema de la base (e2e)', () => {
         }),
         'memberships_marketing_consent_at_check',
       );
+    });
+
+    it('una pieza con destino propio exige destinationUrl, y CLUBSY no la admite', async () => {
+      await expectRejected(
+        prisma.piece.create({
+          data: {
+            merchantId: ids.merchantA,
+            label: 'Mesa 1',
+            publicCode: 'check-sin-url',
+            destinationType: 'WHATSAPP',
+          },
+        }),
+        'pieces_destination_url_required_check',
+      );
+      await expectRejected(
+        prisma.piece.create({
+          data: {
+            merchantId: ids.merchantA,
+            label: 'Mesa 2',
+            publicCode: 'check-con-url-de-mas',
+            destinationUrl: 'https://wa.me/5491100000000',
+          },
+        }),
+        'pieces_destination_url_required_check',
+      );
+      await prisma.piece.create({
+        data: {
+          merchantId: ids.merchantA,
+          label: 'Mesa 3',
+          publicCode: 'check-ok',
+          destinationType: 'WHATSAPP',
+          destinationUrl: 'https://wa.me/5491100000000',
+        },
+      });
     });
 
     it('una sesión de staff solo puede seleccionar uno de sus comercios', async () => {

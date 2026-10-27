@@ -16,9 +16,11 @@ const WITH_RLS = [
   'customers',
   'memberships',
   'merchants',
+  'piece_scans',
   'pieces',
   'redemptions',
   'reward_rules',
+  'sales',
   'staff_memberships',
   'stamps',
 ];
@@ -41,6 +43,9 @@ type Club = {
   phone: string;
   membershipId: string;
   stampId: string;
+  saleId: string;
+  pieceId: string;
+  pieceScanId: string;
 };
 
 describe('Row Level Security (e2e)', () => {
@@ -109,6 +114,9 @@ describe('Row Level Security (e2e)', () => {
     expect(await runtime.redemption.count()).toBe(0);
     expect(await runtime.auditEvent.count()).toBe(0);
     expect(await runtime.staffMembership.count()).toBe(0);
+    // Hay filas de las dos, pero sin contexto RLS no deja ver ninguna.
+    expect(await runtime.sale.count()).toBe(0);
+    expect(await runtime.pieceScan.count()).toBe(0);
     // Datos públicos del comercio.
     expect(await runtime.merchant.count()).toBe(2);
     await expect(runtime.stamp.create({ data: stampData(a) })).rejects.toThrow(
@@ -130,6 +138,8 @@ describe('Row Level Security (e2e)', () => {
       audit: await tx.auditEvent.findMany(),
       merchants: await tx.merchant.findMany(),
       rules: await tx.rewardRule.findMany(),
+      sales: await tx.sale.findMany(),
+      pieceScans: await tx.pieceScan.findMany(),
     }));
 
     expect(seen.stamps).toEqual([{ merchant_id: a.merchantId }]);
@@ -140,6 +150,8 @@ describe('Row Level Security (e2e)', () => {
     // Públicos fuera del panel, pero dentro solo los del propio comercio.
     expect(seen.merchants.map((m) => m.id)).toEqual([a.merchantId]);
     expect(seen.rules.map((r) => r.merchantId)).toEqual([a.merchantId]);
+    expect(seen.sales.map((s) => s.id)).toEqual([a.saleId]);
+    expect(seen.pieceScans.map((s) => s.id)).toEqual([a.pieceScanId]);
   });
 
   it('con un comercio no escribe en otro', async () => {
@@ -270,6 +282,15 @@ async function createClub(
       entityId: stamp.id,
     },
   });
+  const sale = await admin.sale.create({
+    data: { merchantId, product: 'Tag NFC', tagCount: 1 },
+  });
+  const piece = await admin.piece.create({
+    data: { merchantId, label: 'Mesa 1', publicCode: `${slug}-tag` },
+  });
+  const pieceScan = await admin.pieceScan.create({
+    data: { pieceId: piece.id, merchantId },
+  });
   return {
     merchantId,
     staffUserId: staff.id,
@@ -277,5 +298,8 @@ async function createClub(
     phone,
     membershipId: membership.id,
     stampId: stamp.id,
+    saleId: sale.id,
+    pieceId: piece.id,
+    pieceScanId: pieceScan.id,
   };
 }

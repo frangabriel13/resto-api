@@ -141,5 +141,6 @@ function toResponse(merchant: Merchant): MerchantResponse {
     ...merchant,
     createdAt: merchant.createdAt.toISOString(),
     updatedAt: merchant.updatedAt.toISOString(),
+    nextActionAt: merchant.nextActionAt?.toISOString() ?? null,
   };
 }

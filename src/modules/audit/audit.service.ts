@@ -17,6 +17,12 @@ export const AUDIT_ACTIONS = [
   'merchant.customers_exported',
   'piece.created',
   'piece.updated',
+  'piece.destination_changed',
+  'piece.password_revealed',
+  'piece.password_regenerated',
+  'piece.replaced',
+  'sale.created',
+  'sale.updated',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
