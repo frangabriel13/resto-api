@@ -154,6 +154,19 @@ export const errorCatalog = {
     status: HttpStatus.CONFLICT,
     message: 'El comercio no puede pasar a ese estado.',
   },
+  MERCHANT_NOT_ARCHIVABLE: {
+    status: HttpStatus.CONFLICT,
+    message:
+      'Solo se archiva un comercio en preparación o finalizado: un club abierto primero se finaliza.',
+  },
+  MERCHANT_ARCHIVED: {
+    status: HttpStatus.CONFLICT,
+    message: 'El comercio está archivado: desarchivalo para editarlo.',
+  },
+  MERCHANT_HAS_CUSTOMERS: {
+    status: HttpStatus.CONFLICT,
+    message: 'El comercio tiene o tuvo clientes: no se puede borrar.',
+  },
   ACTIVE_RULE_REQUIRED: {
     status: HttpStatus.CONFLICT,
     message:

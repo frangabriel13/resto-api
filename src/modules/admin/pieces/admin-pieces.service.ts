@@ -17,6 +17,7 @@ import type {
   PieceResponse,
   UpdatePieceBody,
 } from './admin-pieces.schemas.js';
+import { assertMerchantEditable } from '../merchants/editable-merchant.js';
 import { NfcPasswordsService } from './nfc-passwords.service.js';
 
 const CODE_ATTEMPTS = 3;
@@ -43,7 +44,7 @@ export class AdminPiecesService {
     merchantId: string,
     body: CreatePieceBody,
   ): Promise<PieceResponse> {
-    await this.assertMerchantExists(merchantId);
+    await assertMerchantEditable(this.prisma, merchantId);
     for (let attempt = 1; ; attempt++) {
       try {
         return await this.createWithCode(adminId, merchantId, body);
@@ -61,6 +62,7 @@ export class AdminPiecesService {
   ): Promise<PieceResponse> {
     return this.prisma.$transaction(async (tx) => {
       const found = await findInMerchant(tx, merchantId, pieceId);
+      await assertMerchantEditable(tx, merchantId);
       const { destination, ...fields } = body;
       const destinationData = destination && toDestinationData(destination);
       const piece = await tx.piece.update({

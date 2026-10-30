@@ -9,7 +9,10 @@ import type {
 } from '../../../generated/prisma/client.js';
 import { PrismaAdminService } from '../../../prisma/prisma-admin.service.js';
 import { AuditService } from '../../audit/audit.service.js';
-import { isAllowedTransition } from '../../merchants/merchant-status.js';
+import {
+  isAllowedTransition,
+  isArchivable,
+} from '../../merchants/merchant-status.js';
 import { slugify, slugWithSuffix } from '../../merchants/slug.js';
 import type {
   CreateMerchantBody,
@@ -17,6 +20,7 @@ import type {
   MerchantSummary,
   UpdateMerchantBody,
 } from './admin-merchants.schemas.js';
+import { lockMerchant } from './lock-merchant.js';
 import {
   applyProfileChanges,
   toProfileData,
@@ -33,9 +37,13 @@ export class AdminMerchantsService {
     private readonly audit: AuditService,
   ) {}
 
-  async list(status?: MerchantStatus): Promise<MerchantSummary[]> {
+  // Los archivados van aparte: o se listan ellos solos, o no aparecen.
+  async list(
+    status: MerchantStatus | undefined,
+    archived: boolean,
+  ): Promise<MerchantSummary[]> {
     const merchants = await this.prisma.merchant.findMany({
-      where: { status },
+      where: { status, archivedAt: archived ? { not: null } : null },
       orderBy: { createdAt: 'desc' },
       include: {
         rewardRules: { where: { active: true }, select: { id: true } },
@@ -53,6 +61,7 @@ export class AdminMerchantsService {
       status: merchant.status,
       hasActiveRule: merchant.rewardRules.length > 0,
       activeOwners: merchant._count.staffMemberships,
+      archivedAt: merchant.archivedAt?.toISOString() ?? null,
       createdAt: merchant.createdAt.toISOString(),
     }));
   }
@@ -142,6 +151,51 @@ export class AdminMerchantsService {
     );
   }
 
+  // Desactiva las piezas; al desarchivar se reactivan a mano.
+  async archive(adminId: string, id: string): Promise<MerchantResponse> {
+    return this.prisma.$transaction(async (tx) => {
+      await lockMerchant(tx, id);
+      const current = await this.findOrFail(tx, id);
+      if (current.archivedAt) return toResponse(current);
+      if (!isArchivable(current.status)) {
+        throw new AppException('MERCHANT_NOT_ARCHIVABLE');
+      }
+      const merchant = await tx.merchant.update({
+        where: { id },
+        data: { archivedAt: new Date() },
+        include: { profile: true },
+      });
+      const pieces = await tx.piece.updateMany({
+        where: { merchantId: id, active: true },
+        data: { active: false },
+      });
+      await this.audit.recordAdmin(tx, adminId, id, {
+        action: 'merchant.archived',
+        entityId: id,
+        payload: { deactivatedPieces: pieces.count },
+      });
+      return toResponse(merchant);
+    });
+  }
+
+  async unarchive(adminId: string, id: string): Promise<MerchantResponse> {
+    return this.prisma.$transaction(async (tx) => {
+      await lockMerchant(tx, id);
+      const current = await this.findOrFail(tx, id);
+      if (!current.archivedAt) return toResponse(current);
+      const merchant = await tx.merchant.update({
+        where: { id },
+        data: { archivedAt: null },
+        include: { profile: true },
+      });
+      await this.audit.recordAdmin(tx, adminId, id, {
+        action: 'merchant.unarchived',
+        entityId: id,
+      });
+      return toResponse(merchant);
+    });
+  }
+
   private async findOrFail(
     db: MerchantDb,
     id: string,
@@ -169,6 +223,7 @@ async function assertCanUpdate(
   current: Merchant,
   { slug, status }: Omit<UpdateMerchantBody, 'profile'>,
 ) {
+  if (current.archivedAt) throw new AppException('MERCHANT_ARCHIVED');
   if (
     slug !== undefined &&
     slug !== current.slug &&
@@ -206,6 +261,7 @@ function toResponse({
 }: MerchantWithProfile): MerchantResponse {
   return {
     ...merchant,
+    archivedAt: merchant.archivedAt?.toISOString() ?? null,
     createdAt: merchant.createdAt.toISOString(),
     updatedAt: merchant.updatedAt.toISOString(),
     profile: toProfileResponse(profile),

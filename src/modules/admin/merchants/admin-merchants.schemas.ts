@@ -47,6 +47,7 @@ export const merchantSchema = z
     googleReviewUrl: z.string().nullable(),
     stampCooldownMinutes: z.number().int(),
     status: z.enum(MerchantStatus),
+    archivedAt: z.iso.datetime().nullable(),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
     profile: merchantProfileSchema,
@@ -61,6 +62,7 @@ export const merchantSummarySchema = z
     status: z.enum(MerchantStatus),
     hasActiveRule: z.boolean(),
     activeOwners: z.number().int(),
+    archivedAt: z.iso.datetime().nullable(),
     createdAt: z.iso.datetime(),
   })
   .meta({ id: 'MerchantSummary' });

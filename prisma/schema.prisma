@@ -34,6 +34,8 @@ model Merchant {
   googleReviewUrl      String?        @map("google_review_url")
   stampCooldownMinutes Int            @default(60) @map("stamp_cooldown_minutes")
   status               MerchantStatus @default(DRAFT)
+  // Aparte del estado: solo ordena el admin (ver la regla 12).
+  archivedAt           DateTime?      @map("archived_at") @db.Timestamptz(3)
   createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt            DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
 
