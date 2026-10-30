@@ -327,7 +327,7 @@ describe('Admin: archivar y borrar comercios (e2e)', () => {
       ]);
     });
 
-    it('con clientes no se borra, aunque hayan salido del club', async () => {
+    it('sin archivar, con clientes no se borra, aunque hayan salido del club', async () => {
       for (const leftAt of [null, new Date()]) {
         const merchant = await createMerchant(`Café ${leftAt ? 'B' : 'A'}`);
         const rule = await addRule(merchant.id);
@@ -347,8 +347,17 @@ describe('Admin: archivar y borrar comercios (e2e)', () => {
           },
         });
 
+        const summary = await send(
+          'get',
+          `/admin/merchants/${merchant.id}/deletion-summary`,
+        ).expect(200);
         const res = await remove(merchant.id, merchant.name).expect(409);
 
+        expect(summary.body).toMatchObject({
+          archived: false,
+          canDelete: false,
+          customers: 1,
+        });
         expect(res.body).toMatchObject({
           code: 'MERCHANT_HAS_CUSTOMERS',
           details: { customers: 1 },
