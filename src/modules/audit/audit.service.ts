@@ -16,6 +16,9 @@ export const AUDIT_ACTIONS = [
   'merchant.updated',
   'merchant.customers_exported',
   'merchant_profile.updated',
+  'merchant.archived',
+  'merchant.unarchived',
+  'merchant.deleted',
   'piece.created',
   'piece.updated',
   'piece.nfc_password_revealed',
@@ -44,10 +47,11 @@ export class AuditService {
   }
 
   // Para /admin: `db` es la transacción de la operación que se audita.
+  // Sin comercio solo cuando ya no existe (se borró).
   async recordAdmin(
     db: AuditDb,
     platformAdminId: string,
-    merchantId: string,
+    merchantId: string | null,
     event: AuditEventInput,
   ) {
     await db.auditEvent.create({
@@ -58,7 +62,7 @@ export class AuditService {
 
 function toAuditData(
   { action, entityId, payload = {} }: AuditEventInput,
-  merchantId: string,
+  merchantId: string | null,
   actorType: 'STAFF' | 'PLATFORM_ADMIN',
   actorId: string,
 ) {

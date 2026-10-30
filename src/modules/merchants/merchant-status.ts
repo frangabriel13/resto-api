@@ -14,6 +14,11 @@ export function isAllowedTransition(
   return from === to || ALLOWED_TRANSITIONS[from].includes(to);
 }
 
+// Un club abierto (activo o pausado) primero se finaliza.
+export function isArchivable(status: MerchantStatus): boolean {
+  return status === 'DRAFT' || status === 'ENDED';
+}
+
 // Con el club pausado o finalizado, el panel queda en modo consulta: no se
 // cambian ni la regla ni la configuración.
 export function isPanelEditable(status: MerchantStatus): boolean {

@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { AppException } from '../../../common/errors/app.exception.js';
 import { isUniqueViolation } from '../../../common/prisma-errors.js';
-import type { Prisma } from '../../../generated/prisma/client.js';
 import { PrismaAdminService } from '../../../prisma/prisma-admin.service.js';
 import { AuditService } from '../../audit/audit.service.js';
 import { findOrCreateStaffUser } from '../../staff/staff-users.js';
+import { assertMerchantEditable } from '../merchants/editable-merchant.js';
 import type { CreateOwnerBody, CreatedOwner } from './admin-owners.schemas.js';
 
 @Injectable()
@@ -21,7 +21,7 @@ export class AdminOwnersService {
   ): Promise<CreatedOwner> {
     try {
       return await this.prisma.$transaction(async (tx) => {
-        await assertMerchantExists(tx, merchantId);
+        await assertMerchantEditable(tx, merchantId);
         const { user, temporaryPassword } = await findOrCreateStaffUser(
           tx,
           merchantId,
@@ -49,12 +49,4 @@ export class AdminOwnersService {
       throw error;
     }
   }
-}
-
-async function assertMerchantExists(
-  tx: Prisma.TransactionClient,
-  merchantId: string,
-) {
-  const merchant = await tx.merchant.findUnique({ where: { id: merchantId } });
-  if (!merchant) throw new AppException('NOT_FOUND');
 }

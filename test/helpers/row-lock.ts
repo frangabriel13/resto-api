@@ -4,7 +4,7 @@ import { createAdminClient } from './../setup/test-database.js';
 // Bloquea la fila desde otra conexión mientras corre `work`. Sirve para
 // probar de forma determinista que el código espera ese bloqueo.
 export async function whileRowLocked(
-  table: 'memberships' | 'customers',
+  table: 'memberships' | 'customers' | 'merchants',
   id: string,
   work: (tx: Prisma.TransactionClient) => Promise<void>,
 ) {
