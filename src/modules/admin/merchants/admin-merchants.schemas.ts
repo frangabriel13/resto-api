@@ -67,7 +67,24 @@ export const merchantSummarySchema = z
   })
   .meta({ id: 'MerchantSummary' });
 
+// Lo que borraría `DELETE /admin/merchants/:id`: cada cantidad, también lo anulado.
+export const deletionSummarySchema = z
+  .object({
+    archived: z.boolean(),
+    // Sin clientes, en cualquier estado; con clientes, solo archivado.
+    canDelete: z.boolean(),
+    customers: z.number().int(),
+    stamps: z.number().int(),
+    redemptions: z.number().int(),
+    pieces: z.number().int(),
+    // Cuentas de clientes y de staff que no están en otro comercio.
+    customerAccounts: z.number().int(),
+    staffUsers: z.number().int(),
+  })
+  .meta({ id: 'MerchantDeletionSummary' });
+
 export type CreateMerchantBody = z.infer<typeof createMerchantBodySchema>;
 export type UpdateMerchantBody = z.infer<typeof updateMerchantBodySchema>;
 export type MerchantResponse = z.infer<typeof merchantSchema>;
 export type MerchantSummary = z.infer<typeof merchantSummarySchema>;
+export type DeletionSummary = z.infer<typeof deletionSummarySchema>;

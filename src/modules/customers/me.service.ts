@@ -4,6 +4,7 @@ import type { Customer } from '../../generated/prisma/client.js';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { SessionService } from '../auth/sessions/session.service.js';
 import { leaveClubData } from '../memberships/leave-club.js';
+import { anonymizedCustomerData } from './anonymized-customer.js';
 import type { MeResponse } from './me.schemas.js';
 
 @Injectable()
@@ -48,12 +49,7 @@ export class MeService {
     }
     await db.customer.update({
       where: { id: customerId },
-      data: {
-        name: null,
-        phoneE164: null,
-        phoneVerifiedAt: null,
-        deletedAt: now,
-      },
+      data: anonymizedCustomerData(now),
     });
     // Sin RLS: los códigos guardan el teléfono y las sesiones no son del contexto.
     if (phoneE164) {

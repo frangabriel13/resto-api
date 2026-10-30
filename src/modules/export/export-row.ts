@@ -13,7 +13,7 @@ export const exportInclude = {
   joinedViaPiece: true,
 } as const;
 
-type MembershipForExport = Prisma.MembershipGetPayload<{
+export type MembershipForExport = Prisma.MembershipGetPayload<{
   include: typeof exportInclude;
 }>;
 

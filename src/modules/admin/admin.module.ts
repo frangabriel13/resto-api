@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AdminMerchantsController } from './merchants/admin-merchants.controller.js';
+import { AdminMerchantExportService } from './merchants/admin-merchant-export.service.js';
 import { AdminMerchantsService } from './merchants/admin-merchants.service.js';
 import { MerchantDeletionService } from './merchants/merchant-deletion.service.js';
 import { AdminOwnersController } from './owners/admin-owners.controller.js';
@@ -17,6 +18,7 @@ import { NfcPasswordsService } from './pieces/nfc-passwords.service.js';
   providers: [
     AdminMerchantsService,
     MerchantDeletionService,
+    AdminMerchantExportService,
     AdminPiecesService,
     AdminOwnersService,
     NfcPasswordsService,

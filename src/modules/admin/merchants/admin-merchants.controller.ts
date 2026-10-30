@@ -9,8 +9,9 @@ import {
   Patch,
   Post,
   Query,
+  StreamableFile,
 } from '@nestjs/common';
-import { ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { ApiProduces, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { z } from 'zod';
 import { MerchantStatus } from '../../../generated/prisma/client.js';
 import { AdminOnly } from '../../auth/admin/admin-only.decorator.js';
@@ -18,14 +19,17 @@ import { Auth } from '../../auth/sessions/auth.decorator.js';
 import type { AuthSession } from '../../auth/sessions/session-kinds.js';
 import {
   createMerchantBodySchema,
+  deletionSummarySchema,
   merchantSchema,
   merchantSummarySchema,
   updateMerchantBodySchema,
   type CreateMerchantBody,
+  type DeletionSummary,
   type MerchantResponse,
   type MerchantSummary,
   type UpdateMerchantBody,
 } from './admin-merchants.schemas.js';
+import { AdminMerchantExportService } from './admin-merchant-export.service.js';
 import { AdminMerchantsService } from './admin-merchants.service.js';
 import { MerchantDeletionService } from './merchant-deletion.service.js';
 
@@ -37,6 +41,7 @@ export class AdminMerchantsController {
   constructor(
     private readonly merchants: AdminMerchantsService,
     private readonly deletion: MerchantDeletionService,
+    private readonly exporter: AdminMerchantExportService,
   ) {}
 
   @Get()
@@ -98,6 +103,26 @@ export class AdminMerchantsController {
     @Param('id', uuid) id: string,
   ): Promise<MerchantResponse> {
     return this.merchants.unarchive(auth.ownerId, id);
+  }
+
+  @Get(':id/deletion-summary')
+  @ApiResponse({ status: HttpStatus.OK, standardSchema: deletionSummarySchema })
+  deletionSummary(@Param('id', uuid) id: string): Promise<DeletionSummary> {
+    return this.deletion.summary(id);
+  }
+
+  @Get(':id/export')
+  @ApiProduces('text/csv')
+  @ApiResponse({ status: HttpStatus.OK, schema: { type: 'string' } })
+  async export(
+    @Auth() auth: AuthSession,
+    @Param('id', uuid) id: string,
+  ): Promise<StreamableFile> {
+    const { filename, csv } = await this.exporter.customers(auth.ownerId, id);
+    return new StreamableFile(Buffer.from(csv, 'utf8'), {
+      type: 'text/csv; charset=utf-8',
+      disposition: `attachment; filename="${filename}"`,
+    });
   }
 
   // confirmName: el nombre del comercio, como segunda confirmación.

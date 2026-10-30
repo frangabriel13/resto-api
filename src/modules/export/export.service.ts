@@ -1,11 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { arDay } from '../../common/ar-time.js';
 import { TenantContext } from '../../common/tenant/tenant-context.js';
 import { AuditService } from '../audit/audit.service.js';
-import { toCsv } from './csv.js';
-import { EXPORT_HEADER, exportInclude, exportRow } from './export-row.js';
-
-export type CustomersExport = { filename: string; csv: string };
+import { customersExport, type CustomersExport } from './customers-export.js';
+import { exportInclude } from './export-row.js';
 
 @Injectable()
 export class ExportService {
@@ -31,9 +28,6 @@ export class ExportService {
       entityId: merchantId,
       payload: { rows: memberships.length },
     });
-    return {
-      filename: `clubsy-${merchant.slug}-${arDay(new Date())}.csv`,
-      csv: toCsv([EXPORT_HEADER, ...memberships.map(exportRow)]),
-    };
+    return customersExport(merchant.slug, memberships);
   }
 }

@@ -165,7 +165,8 @@ export const errorCatalog = {
   },
   MERCHANT_HAS_CUSTOMERS: {
     status: HttpStatus.CONFLICT,
-    message: 'El comercio tiene o tuvo clientes: no se puede borrar.',
+    message:
+      'El comercio tiene o tuvo clientes: archivalo para poder borrarlo.',
   },
   ACTIVE_RULE_REQUIRED: {
     status: HttpStatus.CONFLICT,
