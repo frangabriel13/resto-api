@@ -3,15 +3,21 @@ import { AppException } from '../../common/errors/app.exception.js';
 import { TenantContext } from '../../common/tenant/tenant-context.js';
 import type { Merchant, Prisma } from '../../generated/prisma/client.js';
 import { AuditService } from '../audit/audit.service.js';
+import { ImagesService } from '../images/images.service.js';
+import {
+  applyPageChanges,
+  toMerchantPage,
+} from '../merchants/merchant-page.js';
 import { isPanelEditable } from '../merchants/merchant-status.js';
 import { fieldChanges } from './field-changes.js';
-import type { MerchantSettings, SettingsView } from './settings.schemas.js';
+import type { SettingsView, UpdateSettingsBody } from './settings.schemas.js';
 
 @Injectable()
 export class SettingsService {
   constructor(
     private readonly tenant: TenantContext,
     private readonly audit: AuditService,
+    private readonly images: ImagesService,
   ) {}
 
   async get(): Promise<SettingsView> {
@@ -20,25 +26,70 @@ export class SettingsService {
 
   // El cooldown nuevo aplica desde el próximo sello: el guard lee el comercio
   // en cada request.
-  async update(settings: MerchantSettings): Promise<SettingsView> {
-    const { merchantId, merchantStatus } = this.tenant.scope;
-    if (!isPanelEditable(merchantStatus)) {
-      throw new AppException('MERCHANT_READ_ONLY');
-    }
+  // De la página se audita solo qué campos cambiaron: el WhatsApp puede ser
+  // un celular personal.
+  async update({
+    page,
+    ...settings
+  }: UpdateSettingsBody): Promise<SettingsView> {
+    const { merchantId } = this.tenant.scope;
+    this.assertEditable();
     const current = await this.current();
     const changes = fieldChanges(current, settings);
-    if (Object.keys(changes).length === 0) return toView(current);
+    const pageChanges = applyPageChanges(toMerchantPage(current), page);
+    if (!Object.keys(changes).length && !pageChanges.changedFields.length) {
+      return toView(current);
+    }
 
     const updated = await this.tenant.db.merchant.update({
       where: { id: merchantId },
-      data: settings,
+      data: { ...settings, ...pageChanges.data },
     });
-    await this.audit.record({
-      action: 'merchant.updated',
-      entityId: merchantId,
-      payload: changes as Prisma.InputJsonObject,
-    });
+    if (Object.keys(changes).length) {
+      await this.audit.record({
+        action: 'merchant.updated',
+        entityId: merchantId,
+        payload: changes as Prisma.InputJsonObject,
+      });
+    }
+    if (pageChanges.changedFields.length) {
+      await this.audit.record({
+        action: 'merchant_page.updated',
+        entityId: merchantId,
+        payload: { changedFields: pageChanges.changedFields },
+      });
+    }
     return toView(updated);
+  }
+
+  // file en null la saca. La anterior se borra del bucket después del commit
+  // del request: si algo falla antes, el comercio sigue con su imagen.
+  async replaceCover(file: Buffer | null): Promise<SettingsView> {
+    const { merchantId } = this.tenant.scope;
+    this.assertEditable();
+    const previous = (await this.current()).coverUrl;
+    const url = file
+      ? await this.images.upload(merchantId, 'cover', file)
+      : null;
+    const updated = await this.tenant.db.merchant.update({
+      where: { id: merchantId },
+      data: { coverUrl: url },
+    });
+    if (previous !== url) {
+      await this.audit.record({
+        action: 'merchant_page.updated',
+        entityId: merchantId,
+        payload: { changedFields: ['coverUrl'] },
+      });
+      this.tenant.afterCommit(() => this.images.discard(previous));
+    }
+    return toView(updated);
+  }
+
+  private assertEditable() {
+    if (!isPanelEditable(this.tenant.scope.merchantStatus)) {
+      throw new AppException('MERCHANT_READ_ONLY');
+    }
   }
 
   private current(): Promise<Merchant> {
@@ -62,5 +113,6 @@ function toView(merchant: Merchant): SettingsView {
       googleReviewUrl: merchant.googleReviewUrl,
       stampCooldownMinutes: merchant.stampCooldownMinutes,
     },
+    page: toMerchantPage(merchant),
   };
 }

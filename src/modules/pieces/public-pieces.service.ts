@@ -6,6 +6,7 @@ import type {
   RewardRule,
 } from '../../generated/prisma/client.js';
 import { PrismaAdminService } from '../../prisma/prisma-admin.service.js';
+import { toPublicPage } from '../merchants/merchant-page.js';
 import { redirectUrl, toDestination } from './piece-destination.js';
 import type { PublicPiece } from './public-pieces.schemas.js';
 
@@ -57,21 +58,22 @@ function toPublicPiece(piece: PieceWithClub): PublicPiece {
   if (url) return { state: 'REDIRECT', url };
 
   const { merchant } = piece;
-  if (merchant.status === 'DRAFT') return { state: 'CLUB_NOT_OPEN' };
-
-  const [rule] = merchant.rewardRules;
+  const draft = merchant.status === 'DRAFT';
+  const [rule] = draft ? [] : merchant.rewardRules;
   return {
-    state: merchant.status,
+    state: merchant.status === 'DRAFT' ? 'CLUB_NOT_OPEN' : merchant.status,
     canJoin: merchant.status === 'ACTIVE',
     merchant: {
       id: merchant.id,
       name: merchant.name,
       slug: merchant.slug,
       logoUrl: merchant.logoUrl,
+      coverUrl: merchant.coverUrl,
       primaryColor: merchant.primaryColor,
       secondaryColor: merchant.secondaryColor,
       googleReviewUrl: merchant.googleReviewUrl,
     },
+    page: toPublicPage(merchant),
     rewardRule: rule
       ? {
           stampsRequired: rule.stampsRequired,

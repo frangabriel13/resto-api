@@ -5,6 +5,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { AppModule } from './../../src/app.module.js';
 import { OTP_SENDER } from './../../src/modules/auth/customer/otp-sender.js';
+import { IMAGE_STORAGE } from './../../src/modules/images/image-storage.js';
 import { PrismaAdminService } from './../../src/prisma/prisma-admin.service.js';
 import {
   createClub,
@@ -13,6 +14,7 @@ import {
   stampTokenFor,
   type ClubMember,
 } from './club.js';
+import { FakeImageStorage, fakePng } from './fake-image-storage.js';
 import { FakeOtpSender } from './fake-otp-sender.js';
 import { loginStaff } from './sessions.js';
 
@@ -42,6 +44,8 @@ export function describePanelIsolation(mode: string) {
       })
         .overrideProvider(OTP_SENDER)
         .useValue(sender)
+        .overrideProvider(IMAGE_STORAGE)
+        .useValue(new FakeImageStorage())
         .compile();
       app = moduleRef.createNestApplication({ logger: false });
       await app.init();
@@ -290,6 +294,23 @@ export function describePanelIsolation(mode: string) {
         where: { id: cafe.merchantId },
       });
       expect(updated.stampCooldownMinutes).toBe(5);
+    });
+
+    it('la portada se sube solo en el propio comercio', async () => {
+      await request(app.getHttpServer())
+        .put('/panel/settings/cover')
+        .set('Cookie', owner)
+        .attach('file', fakePng(), 'portada.png')
+        .expect(200);
+      const covers = await prisma.merchant.findMany({
+        select: { id: true, coverUrl: true },
+      });
+      expect(Object.fromEntries(covers.map((m) => [m.id, m.coverUrl]))).toEqual(
+        {
+          [cafe.merchantId]: expect.stringContaining('/merchants/'),
+          [heladeria.merchantId]: null,
+        },
+      );
     });
 
     it('no ve ni gestiona empleados del otro comercio', async () => {

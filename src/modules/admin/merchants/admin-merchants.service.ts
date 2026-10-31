@@ -13,6 +13,11 @@ import {
   isAllowedTransition,
   isArchivable,
 } from '../../merchants/merchant-status.js';
+import {
+  applyPageChanges,
+  NO_PAGE,
+  toMerchantPage,
+} from '../../merchants/merchant-page.js';
 import { slugify, slugWithSuffix } from '../../merchants/slug.js';
 import type {
   CreateMerchantBody,
@@ -27,7 +32,9 @@ import {
   toProfileResponse,
 } from './merchant-profile.js';
 
-type MerchantWithProfile = Merchant & { profile: MerchantProfile | null };
+export type MerchantWithProfile = Merchant & {
+  profile: MerchantProfile | null;
+};
 type MerchantDb = Pick<Prisma.TransactionClient, 'merchant'>;
 
 @Injectable()
@@ -72,7 +79,7 @@ export class AdminMerchantsService {
 
   async create(
     adminId: string,
-    { profile, ...fields }: CreateMerchantBody,
+    { profile, page, ...fields }: CreateMerchantBody,
   ): Promise<MerchantResponse> {
     const baseSlug = fields.slug ?? slugify(fields.name);
     if (!baseSlug) {
@@ -84,12 +91,14 @@ export class AdminMerchantsService {
       toProfileResponse(null),
       profile,
     );
+    const pageChanges = applyPageChanges(NO_PAGE, page);
     return this.withSlugCheck(() =>
       this.prisma.$transaction(async (tx) => {
         const slug = fields.slug ?? (await availableSlug(tx, baseSlug));
         const merchant = await tx.merchant.create({
           data: {
             ...fields,
+            ...pageChanges.data,
             slug,
             profile: changedFields.length
               ? { create: toProfileData(next) }
@@ -97,11 +106,16 @@ export class AdminMerchantsService {
           },
           include: { profile: true },
         });
-        // De la ficha, solo qué campos se cargaron: nunca los valores.
+        // De la ficha y la página, solo qué campos se cargaron: nunca los valores.
         await this.audit.recordAdmin(tx, adminId, merchant.id, {
           action: 'merchant.created',
           entityId: merchant.id,
-          payload: { ...fields, slug, profileFields: changedFields },
+          payload: {
+            ...fields,
+            slug,
+            profileFields: changedFields,
+            pageFields: pageChanges.changedFields,
+          },
         });
         return toResponse(merchant);
       }),
@@ -111,7 +125,7 @@ export class AdminMerchantsService {
   async update(
     adminId: string,
     id: string,
-    { profile, ...fields }: UpdateMerchantBody,
+    { profile, page, ...fields }: UpdateMerchantBody,
   ): Promise<MerchantResponse> {
     return this.withSlugCheck(() =>
       this.prisma.$transaction(async (tx) => {
@@ -122,10 +136,12 @@ export class AdminMerchantsService {
           profile,
         );
         const profileData = toProfileData(next);
+        const pageChanges = applyPageChanges(toMerchantPage(current), page);
         const merchant = await tx.merchant.update({
           where: { id },
           data: {
             ...fields,
+            ...(pageChanges.changedFields.length && pageChanges.data),
             profile: changedFields.length
               ? { upsert: { create: profileData, update: profileData } }
               : undefined,
@@ -144,6 +160,13 @@ export class AdminMerchantsService {
             action: 'merchant_profile.updated',
             entityId: id,
             payload: { changedFields },
+          });
+        }
+        if (pageChanges.changedFields.length) {
+          await this.audit.recordAdmin(tx, adminId, id, {
+            action: 'merchant_page.updated',
+            entityId: id,
+            payload: { changedFields: pageChanges.changedFields },
           });
         }
         return toResponse(merchant);
@@ -255,15 +278,21 @@ async function availableSlug(db: MerchantDb, base: string): Promise<string> {
   }
 }
 
-function toResponse({
-  profile,
-  ...merchant
-}: MerchantWithProfile): MerchantResponse {
+export function toResponse(merchant: MerchantWithProfile): MerchantResponse {
   return {
-    ...merchant,
+    id: merchant.id,
+    name: merchant.name,
+    slug: merchant.slug,
+    logoUrl: merchant.logoUrl,
+    primaryColor: merchant.primaryColor,
+    secondaryColor: merchant.secondaryColor,
+    googleReviewUrl: merchant.googleReviewUrl,
+    stampCooldownMinutes: merchant.stampCooldownMinutes,
+    status: merchant.status,
     archivedAt: merchant.archivedAt?.toISOString() ?? null,
     createdAt: merchant.createdAt.toISOString(),
     updatedAt: merchant.updatedAt.toISOString(),
-    profile: toProfileResponse(profile),
+    profile: toProfileResponse(merchant.profile),
+    page: toMerchantPage(merchant),
   };
 }

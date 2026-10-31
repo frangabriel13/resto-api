@@ -332,6 +332,27 @@ describe('Schema de la base (e2e)', () => {
       );
     });
 
+    it('el Wi-Fi del comercio va completo o vacío', async () => {
+      const wifi = (data: Record<string, unknown>) =>
+        prisma.merchant.update({ where: { id: ids.merchantA }, data });
+
+      for (const data of [
+        { wifiSsid: 'Cafe' },
+        { wifiSsid: 'Cafe', wifiSecurity: 'WPA' },
+        { wifiSsid: 'Cafe', wifiSecurity: 'NONE', wifiPassword: 'clave1234' },
+        { wifiSecurity: 'NONE' },
+        { wifiPassword: 'clave1234' },
+      ]) {
+        await expectRejected(wifi(data), 'merchants_wifi_check');
+      }
+      await wifi({ wifiSsid: 'Cafe', wifiSecurity: 'NONE' });
+      await wifi({
+        wifiSsid: 'Cafe',
+        wifiSecurity: 'WEP',
+        wifiPassword: 'clave',
+      });
+    });
+
     it('una pieza tiene solo el campo de su destino', async () => {
       const piece = (code: string, data: Record<string, unknown>) =>
         prisma.piece.create({

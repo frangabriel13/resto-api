@@ -16,6 +16,7 @@ export const AUDIT_ACTIONS = [
   'merchant.updated',
   'merchant.customers_exported',
   'merchant_profile.updated',
+  'merchant_page.updated',
   'merchant.archived',
   'merchant.unarchived',
   'merchant.deleted',
