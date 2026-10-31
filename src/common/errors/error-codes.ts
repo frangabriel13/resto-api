@@ -163,6 +163,22 @@ export const errorCatalog = {
     status: HttpStatus.CONFLICT,
     message: 'El comercio está archivado: desarchivalo para editarlo.',
   },
+  IMAGE_TYPE_NOT_ALLOWED: {
+    status: HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+    message: 'La imagen tiene que ser PNG, JPG o WebP.',
+  },
+  IMAGE_TOO_LARGE: {
+    status: HttpStatus.PAYLOAD_TOO_LARGE,
+    message: 'La imagen no puede pesar más de 2 MB.',
+  },
+  IMAGE_STORAGE_UNAVAILABLE: {
+    status: HttpStatus.SERVICE_UNAVAILABLE,
+    message: 'La subida de imágenes no está configurada.',
+  },
+  IMAGE_UPLOAD_FAILED: {
+    status: HttpStatus.BAD_GATEWAY,
+    message: 'No se pudo guardar la imagen. Probá de nuevo.',
+  },
   MERCHANT_HAS_CUSTOMERS: {
     status: HttpStatus.CONFLICT,
     message:

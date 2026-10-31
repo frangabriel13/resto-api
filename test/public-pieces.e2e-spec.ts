@@ -83,10 +83,12 @@ describe('Entrada pública por pieza (e2e)', () => {
         name: 'Café La Esquina',
         slug: 'cafe-la-esquina',
         logoUrl: null,
+        coverUrl: null,
         primaryColor: '#6F4E37',
         secondaryColor: null,
         googleReviewUrl: 'https://g.page/r/cafe',
       },
+      page: { wifi: null, socials: [] },
       rewardRule: {
         stampsRequired: 8,
         rewardDescription: 'Un café de regalo',
@@ -107,10 +109,40 @@ describe('Entrada pública por pieza (e2e)', () => {
     }
   });
 
-  it('un comercio en preparación no muestra datos del club', async () => {
-    await setStatus('DRAFT');
+  it('en preparación muestra la página del comercio, sin el club', async () => {
+    await prisma.merchant.update({
+      where: { id: merchantId },
+      data: {
+        status: 'DRAFT',
+        coverUrl: 'https://img.clubsy.com.ar/portada.webp',
+        wifiSsid: 'Cafe Clientes',
+        wifiPassword: 'clave1234',
+        wifiSecurity: 'WPA',
+        tiktokUsername: 'cafe',
+      },
+    });
+
     const res = await find('mostrador123').expect(200);
-    expect(res.body).toEqual({ state: 'CLUB_NOT_OPEN' });
+
+    expect(res.body).toMatchObject({
+      state: 'CLUB_NOT_OPEN',
+      canJoin: false,
+      merchant: {
+        name: 'Café La Esquina',
+        coverUrl: 'https://img.clubsy.com.ar/portada.webp',
+        googleReviewUrl: 'https://g.page/r/cafe',
+      },
+      page: {
+        wifi: {
+          ssid: 'Cafe Clientes',
+          password: 'clave1234',
+          security: 'WPA',
+          qrPayload: 'WIFI:T:WPA;S:Cafe Clientes;P:clave1234;;',
+        },
+        socials: [{ type: 'TIKTOK', url: 'https://www.tiktok.com/@cafe' }],
+      },
+      rewardRule: null,
+    });
   });
 
   it('una pieza inactiva no muestra datos del club', async () => {

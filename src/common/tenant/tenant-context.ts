@@ -30,7 +30,11 @@ export type TenantDb = Omit<
   ITXClientDenyList
 >;
 
-type TenantStore = TenantScope & { db: TenantDb };
+type AfterCommitTask = () => Promise<void>;
+type TenantStore = TenantScope & {
+  db: TenantDb;
+  afterCommit: AfterCommitTask[];
+};
 
 @Injectable()
 export class TenantContext {
@@ -46,18 +50,31 @@ export class TenantContext {
     );
   }
 
-  run<T>(scope: TenantScope, work: () => Promise<T>): Promise<T> {
-    return this.client.$transaction(
+  async run<T>(scope: TenantScope, work: () => Promise<T>): Promise<T> {
+    const afterCommit: AfterCommitTask[] = [];
+    const result = await this.client.$transaction(
       async (tx) => {
         await setTransactionSetting(tx, 'app.merchant_id', scope.merchantId);
-        return this.store.run({ ...scope, db: tx }, work);
+        return this.store.run({ ...scope, db: tx, afterCommit }, work);
       },
       { timeout: SCOPED_TRANSACTION_TIMEOUT_MS },
     );
+    for (const task of afterCommit) await task();
+    return result;
+  }
+
+  // Para lo que no se puede deshacer (borrar un archivo): corre solo si la
+  // transacción del request se confirmó. La tarea no debe lanzar errores.
+  afterCommit(task: AfterCommitTask) {
+    this.store.current().afterCommit.push(task);
   }
 
   get scope(): TenantScope {
-    const { db: _db, ...scope } = this.store.current();
+    const {
+      db: _db,
+      afterCommit: _afterCommit,
+      ...scope
+    } = this.store.current();
     return scope;
   }
 

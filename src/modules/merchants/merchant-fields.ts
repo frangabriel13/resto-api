@@ -19,3 +19,25 @@ export const googleReviewUrlSchema = z
   .max(500);
 
 export const stampCooldownSchema = z.number().int().min(0).max(1440);
+
+// Redes: el usuario se guarda sin la @ y en minúsculas.
+export const instagramUsernameSchema = z
+  .string()
+  .trim()
+  .regex(/^@?[A-Za-z0-9._]{1,30}$/, 'Ingresá un usuario de Instagram válido.')
+  .transform((value) => value.replace(/^@/, '').toLowerCase());
+
+export const tiktokUsernameSchema = z
+  .string()
+  .trim()
+  .regex(/^@?[A-Za-z0-9._]{2,24}$/, 'Ingresá un usuario de TikTok válido.')
+  .transform((value) => value.replace(/^@/, '').toLowerCase());
+
+// Solo Facebook, para que el footer no sirva para mandar a otro sitio.
+export const facebookUrlSchema = z
+  .url({
+    protocol: /^https$/,
+    hostname: /^(?:[a-z0-9-]+\.)*facebook\.com$/,
+    error: 'Tiene que ser un link https de Facebook.',
+  })
+  .max(500);

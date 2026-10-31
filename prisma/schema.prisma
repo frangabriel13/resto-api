@@ -36,8 +36,19 @@ model Merchant {
   status               MerchantStatus @default(DRAFT)
   // Aparte del estado: solo ordena el admin (ver la regla 12).
   archivedAt           DateTime?      @map("archived_at") @db.Timestamptz(3)
-  createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt            DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  // Página del comercio: datos públicos, los ve cualquiera que abra la pieza
+  // (la contraseña del Wi-Fi también). El Wi-Fi va completo o vacío (CHECK).
+  coverUrl          String?       @map("cover_url")
+  wifiSsid          String?       @map("wifi_ssid")
+  wifiPassword      String?       @map("wifi_password")
+  wifiSecurity      WifiSecurity? @map("wifi_security")
+  instagramUsername String?       @map("instagram_username")
+  tiktokUsername    String?       @map("tiktok_username")
+  whatsappPhoneE164 String?       @map("whatsapp_phone_e164")
+  facebookUrl       String?       @map("facebook_url")
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   staffMemberships StaffMembership[]
   memberships      Membership[]
@@ -248,6 +259,15 @@ enum PieceType {
   NFC_QR
 
   @@map("piece_type")
+}
+
+// Los tipos que entiende el QR estándar de Wi-Fi.
+enum WifiSecurity {
+  WPA
+  WEP
+  NONE
+
+  @@map("wifi_security")
 }
 
 // A dónde lleva la pieza al escanearla; los externos redirigen sin mirar el club.

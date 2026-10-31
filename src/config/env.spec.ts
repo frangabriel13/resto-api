@@ -40,6 +40,63 @@ describe('validateEnv', () => {
     }
   });
 
+  describe('R2', () => {
+    const r2 = {
+      R2_ACCOUNT_ID: 'ab'.repeat(16),
+      R2_ACCESS_KEY_ID: 'key',
+      R2_SECRET_ACCESS_KEY: 'secret',
+      R2_BUCKET: 'clubsy-imagenes-dev',
+      IMAGES_PUBLIC_URL: 'https://pub-123.r2.dev/',
+    };
+
+    it('es opcional fuera de producción, y la URL pública queda sin / final', () => {
+      expect(validateEnv(validEnv).R2_BUCKET).toBeUndefined();
+      expect(validateEnv({ ...validEnv, ...r2 }).IMAGES_PUBLIC_URL).toBe(
+        'https://pub-123.r2.dev',
+      );
+    });
+
+    it('las variables van todas juntas', () => {
+      const { R2_SECRET_ACCESS_KEY: _, ...partial } = r2;
+      expect(() => validateEnv({ ...validEnv, ...partial })).toThrow(
+        /R2_SECRET_ACCESS_KEY: las variables de R2 van todas juntas/,
+      );
+    });
+
+    it('en producción son obligatorias', () => {
+      const production = {
+        ...validEnv,
+        NODE_ENV: 'production',
+        OTP_SENDER: 'whatsapp',
+        WHATSAPP_PHONE_NUMBER_ID: '123',
+        WHATSAPP_ACCESS_TOKEN: 'token',
+        WHATSAPP_TEMPLATE_NAME: 'clubsy_codigo',
+        EMAIL_SENDER: 'resend',
+        RESEND_API_KEY: 're_x',
+        EMAIL_FROM: 'Clubsy <no-reply@mail.clubsy.com.ar>',
+        SENTRY_DSN: 'https://key@sentry.io/1',
+        APP_URL: 'https://clubsy.com.ar',
+      };
+      expect(() => validateEnv(production)).toThrow(
+        /R2_BUCKET: en producción es obligatoria/,
+      );
+      expect(() => validateEnv({ ...production, ...r2 })).not.toThrow();
+    });
+
+    it('valida el Account ID y que la URL pública sea https', () => {
+      expect(() =>
+        validateEnv({ ...validEnv, ...r2, R2_ACCOUNT_ID: 'no-es-hex' }),
+      ).toThrow(/R2_ACCOUNT_ID/);
+      expect(() =>
+        validateEnv({
+          ...validEnv,
+          ...r2,
+          IMAGES_PUBLIC_URL: 'http://img.com',
+        }),
+      ).toThrow(/IMAGES_PUBLIC_URL/);
+    });
+  });
+
   it('falla si la URL no es de Postgres', () => {
     expect(() =>
       validateEnv({ ...validEnv, DATABASE_URL: 'mysql://x@localhost/db' }),

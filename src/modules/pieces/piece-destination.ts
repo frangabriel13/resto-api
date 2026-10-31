@@ -1,13 +1,11 @@
 import { z } from 'zod';
 import type { Piece } from '../../generated/prisma/client.js';
 import { arMobileSchema } from '../customers/phone-schema.js';
-import { googleReviewUrlSchema } from '../merchants/merchant-fields.js';
-
-const instagramUsernameSchema = z
-  .string()
-  .trim()
-  .regex(/^@?[A-Za-z0-9._]{1,30}$/, 'Ingresá un usuario de Instagram válido.')
-  .transform((value) => value.replace(/^@/, '').toLowerCase());
+import {
+  googleReviewUrlSchema,
+  instagramUsernameSchema,
+} from '../merchants/merchant-fields.js';
+import { instagramUrl, whatsappUrl } from '../merchants/social-links.js';
 
 // Cada destino lleva solo sus campos: uno de otro destino es un error.
 export const destinationBodySchema = z
@@ -89,13 +87,9 @@ export function redirectUrl(destination: Destination): string | null {
     case 'GOOGLE_REVIEWS':
       return destination.url;
     case 'INSTAGRAM':
-      return `https://www.instagram.com/${destination.username}/`;
-    case 'WHATSAPP': {
-      const url = `https://wa.me/${destination.phone.slice(1)}`;
-      return destination.message
-        ? `${url}?text=${encodeURIComponent(destination.message)}`
-        : url;
-    }
+      return instagramUrl(destination.username);
+    case 'WHATSAPP':
+      return whatsappUrl(destination.phone, destination.message);
   }
 }
 

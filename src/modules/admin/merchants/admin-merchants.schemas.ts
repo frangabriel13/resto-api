@@ -6,6 +6,10 @@ import {
   httpsUrlSchema,
   stampCooldownSchema,
 } from '../../merchants/merchant-fields.js';
+import {
+  merchantPageSchema,
+  pageBodySchema,
+} from '../../merchants/merchant-page.js';
 import { SLUG_MAX_LENGTH, SLUG_PATTERN } from '../../merchants/slug.js';
 import {
   merchantProfileSchema,
@@ -23,6 +27,7 @@ const editableFields = {
   googleReviewUrl: googleReviewUrlSchema.nullable(),
   stampCooldownMinutes: stampCooldownSchema,
   profile: profileBodySchema,
+  page: pageBodySchema,
 };
 
 export const createMerchantBodySchema = z
@@ -51,6 +56,7 @@ export const merchantSchema = z
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
     profile: merchantProfileSchema,
+    page: merchantPageSchema,
   })
   .meta({ id: 'Merchant' });
 

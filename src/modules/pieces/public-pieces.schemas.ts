@@ -1,17 +1,22 @@
 import { z } from 'zod';
+import { publicPageSchema } from '../merchants/merchant-page.js';
 
+// La página del comercio sale en cualquier estado; el club (regla y canJoin),
+// solo una vez abierto.
 const clubSchema = z.object({
-  state: z.enum(['ACTIVE', 'PAUSED', 'ENDED']),
+  state: z.enum(['CLUB_NOT_OPEN', 'ACTIVE', 'PAUSED', 'ENDED']),
   canJoin: z.boolean(),
   merchant: z.object({
     id: z.uuid(),
     name: z.string(),
     slug: z.string(),
     logoUrl: z.string().nullable(),
+    coverUrl: z.string().nullable(),
     primaryColor: z.string().nullable(),
     secondaryColor: z.string().nullable(),
     googleReviewUrl: z.string().nullable(),
   }),
+  page: publicPageSchema,
   rewardRule: z
     .object({
       stampsRequired: z.number().int(),
@@ -21,13 +26,11 @@ const clubSchema = z.object({
     .nullable(),
 });
 
-// Sin datos del club si la pieza está inactiva, lleva a otro destino o el
-// comercio no abrió.
+// Sin datos del comercio si la pieza está inactiva o lleva a otro destino.
 export const publicPieceSchema = z
   .discriminatedUnion('state', [
     z.object({ state: z.literal('PIECE_INACTIVE') }),
     z.object({ state: z.literal('REDIRECT'), url: z.string() }),
-    z.object({ state: z.literal('CLUB_NOT_OPEN') }),
     clubSchema,
   ])
   .meta({ id: 'PublicPiece' });

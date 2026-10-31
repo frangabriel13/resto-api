@@ -23,6 +23,16 @@ const PROVIDER_VARIABLES = [
   },
 ] as const;
 
+// Imágenes en Cloudflare R2: van todas juntas. Sin ellas (tests, o un
+// desarrollo sin bucket) la subida responde IMAGE_STORAGE_UNAVAILABLE.
+export const R2_VARIABLES = [
+  'R2_ACCOUNT_ID',
+  'R2_ACCESS_KEY_ID',
+  'R2_SECRET_ACCESS_KEY',
+  'R2_BUCKET',
+  'IMAGES_PUBLIC_URL',
+] as const;
+
 // MIGRATE_DATABASE_URL no va: solo la usa el CLI de Prisma.
 export const envSchema = z
   .object({
@@ -57,6 +67,18 @@ export const envSchema = z
     SENTRY_DSN: z.url().optional(),
     SENTRY_ENVIRONMENT: z.string().min(1).optional(),
     SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0),
+    R2_ACCOUNT_ID: z
+      .string()
+      .regex(/^[0-9a-f]{32}$/, 'es el Account ID de Cloudflare (32 hex)')
+      .optional(),
+    R2_ACCESS_KEY_ID: z.string().min(1).optional(),
+    R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+    R2_BUCKET: z.string().min(1).optional(),
+    // Desde donde se sirve el bucket: https://img.clubsy.com.ar (o el r2.dev).
+    IMAGES_PUBLIC_URL: z
+      .url({ protocol: /^https$/, error: 'tiene que ser una URL https://' })
+      .transform((url) => url.replace(/\/+$/, ''))
+      .optional(),
     // URL del front: arma los links de los mails.
     APP_URL: z
       .url({ protocol: /^https?$/, error: 'tiene que ser una URL http(s)://' })
@@ -88,6 +110,20 @@ export const envSchema = z
       message: 'en producción no se puede usar el envío por consola',
     },
   )
+  .superRefine((env, ctx) => {
+    const missing = R2_VARIABLES.filter((key) => !env[key]);
+    const partial = missing.length < R2_VARIABLES.length;
+    if (!partial && env.NODE_ENV !== 'production') return;
+    for (const key of missing) {
+      ctx.addIssue({
+        code: 'custom',
+        path: [key],
+        message: partial
+          ? 'las variables de R2 van todas juntas'
+          : 'en producción es obligatoria',
+      });
+    }
+  })
   .refine((env) => env.NODE_ENV !== 'production' || env.SENTRY_DSN, {
     path: ['SENTRY_DSN'],
     message: 'en producción es obligatorio',

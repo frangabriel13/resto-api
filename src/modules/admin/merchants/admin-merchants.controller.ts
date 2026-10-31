@@ -8,10 +8,19 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   StreamableFile,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiProduces, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiConsumes,
+  ApiProduces,
+  ApiQuery,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { z } from 'zod';
 import { MerchantStatus } from '../../../generated/prisma/client.js';
 import { AdminOnly } from '../../auth/admin/admin-only.decorator.js';
@@ -29,11 +38,15 @@ import {
   type MerchantSummary,
   type UpdateMerchantBody,
 } from './admin-merchants.schemas.js';
+import { ImageUploadInterceptor } from '../../images/image-upload.interceptor.js';
+import { IMAGE_FILE_BODY } from '../../images/image-upload.openapi.js';
 import { AdminMerchantExportService } from './admin-merchant-export.service.js';
+import { AdminMerchantImagesService } from './admin-merchant-images.service.js';
 import { AdminMerchantsService } from './admin-merchants.service.js';
 import { MerchantDeletionService } from './merchant-deletion.service.js';
 
 const uuid = { schema: z.uuid() };
+const imageKind = { schema: z.enum(['logo', 'cover']) };
 
 @Controller('admin/merchants')
 @AdminOnly()
@@ -42,6 +55,7 @@ export class AdminMerchantsController {
     private readonly merchants: AdminMerchantsService,
     private readonly deletion: MerchantDeletionService,
     private readonly exporter: AdminMerchantExportService,
+    private readonly images: AdminMerchantImagesService,
   ) {}
 
   @Get()
@@ -123,6 +137,30 @@ export class AdminMerchantsController {
       type: 'text/csv; charset=utf-8',
       disposition: `attachment; filename="${filename}"`,
     });
+  }
+
+  @Put(':id/images/:kind')
+  @UseInterceptors(ImageUploadInterceptor)
+  @ApiConsumes('multipart/form-data')
+  @ApiBody(IMAGE_FILE_BODY)
+  @ApiResponse({ status: HttpStatus.OK, standardSchema: merchantSchema })
+  uploadImage(
+    @Auth() auth: AuthSession,
+    @Param('id', uuid) id: string,
+    @Param('kind', imageKind) kind: 'logo' | 'cover',
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<MerchantResponse> {
+    return this.images.replace(auth.ownerId, id, kind, file.buffer);
+  }
+
+  @Delete(':id/images/:kind')
+  @ApiResponse({ status: HttpStatus.OK, standardSchema: merchantSchema })
+  removeImage(
+    @Auth() auth: AuthSession,
+    @Param('id', uuid) id: string,
+    @Param('kind', imageKind) kind: 'logo' | 'cover',
+  ): Promise<MerchantResponse> {
+    return this.images.replace(auth.ownerId, id, kind, null);
   }
 
   // confirmName: el nombre del comercio, como segunda confirmación.

@@ -86,6 +86,14 @@ describe('Panel: configuración del comercio (e2e)', () => {
         googleReviewUrl: null,
         stampCooldownMinutes: 60,
       },
+      page: {
+        coverUrl: null,
+        wifi: null,
+        instagramUsername: null,
+        tiktokUsername: null,
+        whatsappPhone: null,
+        facebookUrl: null,
+      },
     });
     await getSettings(employee).expect(403);
     await putSettings(employee, SETTINGS).expect(403);
@@ -131,6 +139,84 @@ describe('Panel: configuración del comercio (e2e)', () => {
       expect(res.body.code).toBe('VALIDATION_ERROR');
     }
     expect(await audits()).toHaveLength(0);
+  });
+
+  describe('página del comercio', () => {
+    const PAGE = {
+      wifi: { security: 'WPA', ssid: 'Cafe Clientes', password: 'clave1234' },
+      instagramUsername: '@CafeEsquina',
+      whatsappPhone: '11 2345-6789',
+    };
+    const pageAudits = () =>
+      prisma.auditEvent.findMany({
+        where: { action: 'merchant_page.updated' },
+        orderBy: { createdAt: 'asc' },
+      });
+
+    it('el dueño carga el Wi-Fi y las redes; se audita qué cambió, sin los valores', async () => {
+      const res = await putSettings(owner, {
+        ...SETTINGS,
+        page: PAGE,
+      }).expect(200);
+
+      expect(res.body.page).toEqual({
+        coverUrl: null,
+        wifi: {
+          ssid: 'Cafe Clientes',
+          password: 'clave1234',
+          security: 'WPA',
+        },
+        instagramUsername: 'cafeesquina',
+        tiktokUsername: null,
+        whatsappPhone: '+5491123456789',
+        facebookUrl: null,
+      });
+      await putSettings(owner, {
+        ...SETTINGS,
+        page: { ...PAGE, wifi: null, tiktokUsername: 'cafe' },
+      }).expect(200);
+
+      const events = await pageAudits();
+      expect(events.map((e) => e.payload)).toEqual([
+        { changedFields: ['wifi', 'instagramUsername', 'whatsappPhone'] },
+        { changedFields: ['wifi', 'tiktokUsername'] },
+      ]);
+      expect(events[0]).toMatchObject({ actorType: 'STAFF' });
+      expect(JSON.stringify(events)).not.toMatch(/clave1234|2345/);
+    });
+
+    it('un PUT sin la página no la toca', async () => {
+      await putSettings(owner, { ...SETTINGS, page: PAGE }).expect(200);
+
+      const res = await putSettings(owner, {
+        ...SETTINGS,
+        primaryColor: null,
+      }).expect(200);
+
+      expect(res.body.page.wifi).toMatchObject({ ssid: 'Cafe Clientes' });
+      expect(await pageAudits()).toHaveLength(1);
+    });
+
+    it('valida la página y no deja cargar la portada', async () => {
+      for (const page of [
+        { wifi: { security: 'WPA', ssid: 'Cafe' } },
+        { facebookUrl: 'https://otro-sitio.com/cafe' },
+        { tiktokUsername: 'con espacios' },
+        { coverUrl: 'https://img.com/portada.png' },
+      ]) {
+        const res = await putSettings(owner, { ...SETTINGS, page }).expect(400);
+        expect(res.body.code).toBe('VALIDATION_ERROR');
+      }
+      expect(await pageAudits()).toHaveLength(0);
+    });
+
+    it('con el club pausado no se cambia', async () => {
+      await setStatus('PAUSED');
+      const res = await putSettings(owner, { ...SETTINGS, page: PAGE }).expect(
+        409,
+      );
+      expect(res.body.code).toBe('MERCHANT_READ_ONLY');
+    });
   });
 
   it('con el club pausado o finalizado no se cambia', async () => {
