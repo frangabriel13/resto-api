@@ -5,7 +5,7 @@ import { ImagesService, type ImageKind } from '../../images/images.service.js';
 import type { MerchantResponse } from './admin-merchants.schemas.js';
 import { toResponse } from './admin-merchants.service.js';
 import { assertMerchantEditable } from './editable-merchant.js';
-import { lockMerchant } from './lock-merchant.js';
+import { lockMerchant } from '../../merchants/lock-merchant.js';
 
 const COLUMN = { logo: 'logoUrl', cover: 'coverUrl' } as const;
 

@@ -23,6 +23,28 @@ export const DEMO_RULE = {
   active: true,
 } as const;
 
+export const DEMO_MENU = [
+  {
+    name: 'Cafetería',
+    items: [
+      { name: 'Café con leche', price: 2800 },
+      { name: 'Cortado', description: 'Con un toque de leche', price: 2500 },
+    ],
+  },
+  {
+    name: 'Pastelería',
+    items: [
+      { name: 'Medialuna', price: 1200 },
+      {
+        name: 'Torta del día',
+        description: 'Preguntá cuál hay',
+        price: 4500,
+        priceFrom: true,
+      },
+    ],
+  },
+];
+
 export type DemoCustomer = {
   name: string;
   phoneSuffix: string;

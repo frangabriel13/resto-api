@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { publicPageSchema } from '../merchants/merchant-page.js';
+import { publicMenuSchema } from '../menu/menu.schemas.js';
 
 // La página del comercio sale en cualquier estado; el club (regla y canJoin),
 // solo una vez abierto.
@@ -17,6 +18,7 @@ const clubSchema = z.object({
     googleReviewUrl: z.string().nullable(),
   }),
   page: publicPageSchema,
+  menu: publicMenuSchema.nullable(),
   rewardRule: z
     .object({
       stampsRequired: z.number().int(),

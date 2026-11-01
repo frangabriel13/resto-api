@@ -139,6 +139,8 @@ export function describePanelIsolation(mode: string) {
           where: { id: heladeria.merchantId },
         }),
         rules: await prisma.rewardRule.findMany(byMerchant),
+        menuCategories: await prisma.menuCategory.findMany(byMerchant),
+        menuItems: await prisma.menuItem.findMany(byMerchant),
         memberships: await prisma.membership.findMany(byMerchant),
         stamps: await prisma.stamp.findMany(byMerchant),
         redemptions: await prisma.redemption.findMany(byMerchant),
@@ -311,6 +313,87 @@ export function describePanelIsolation(mode: string) {
           [heladeria.merchantId]: null,
         },
       );
+    });
+
+    describe('carta', () => {
+      let foreignCategoryId: string;
+      let foreignItemId: string;
+
+      beforeEach(async () => {
+        const category = await prisma.menuCategory.create({
+          data: {
+            merchantId: heladeria.merchantId,
+            name: 'Helados',
+            position: 1,
+          },
+        });
+        const item = await prisma.menuItem.create({
+          data: {
+            merchantId: heladeria.merchantId,
+            categoryId: category.id,
+            name: 'Cucurucho',
+            position: 1,
+          },
+        });
+        foreignCategoryId = category.id;
+        foreignItemId = item.id;
+        before = await snapshotOfHeladeria();
+      });
+
+      const send = (
+        method: 'post' | 'patch' | 'delete',
+        path: string,
+        body: object = {},
+      ) =>
+        request(app.getHttpServer())
+          [method](path)
+          .set('Cookie', owner)
+          .send(body);
+
+      it('no ve la carta del otro comercio', async () => {
+        const res = await get(owner, '/panel/menu').expect(200);
+        expect(res.body.categories).toEqual([]);
+      });
+
+      it('no modifica categorías ni ítems del otro comercio', async () => {
+        const category = `/panel/menu/categories/${foreignCategoryId}`;
+        const item = `/panel/menu/items/${foreignItemId}`;
+        const up = { direction: 'up' };
+        await send('patch', category, { name: 'Robada' }).expect(404);
+        await send('delete', category).expect(404);
+        await send('post', `${category}/move`, up).expect(404);
+        await send('post', `${category}/items`, { name: 'X' }).expect(404);
+        await send('patch', item, { name: 'Robado' }).expect(404);
+        await send('delete', item).expect(404);
+        await send('post', `${item}/move`, up).expect(404);
+      });
+
+      it('no mueve un ítem propio a una categoría del otro comercio', async () => {
+        const mine = await send('post', '/panel/menu/categories', {
+          name: 'Cafetería',
+        }).expect(201);
+        const withItem = await send(
+          'post',
+          `/panel/menu/categories/${mine.body.categories[0].id}/items`,
+          { name: 'Café' },
+        ).expect(201);
+        const itemId = withItem.body.categories[0].items[0].id;
+
+        await send('patch', `/panel/menu/items/${itemId}`, {
+          categoryId: foreignCategoryId,
+        }).expect(404);
+      });
+
+      it('lo que carga queda en el propio comercio', async () => {
+        await send('post', '/panel/menu/categories', {
+          name: 'Cafetería',
+        }).expect(201);
+        expect(
+          await prisma.menuCategory.count({
+            where: { merchantId: cafe.merchantId },
+          }),
+        ).toBe(1);
+      });
     });
 
     it('no ve ni gestiona empleados del otro comercio', async () => {

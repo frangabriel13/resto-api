@@ -236,6 +236,17 @@ describe('Admin: archivar y borrar comercios (e2e)', () => {
         profile: { notes: 'Le vendimos dos carteles' },
       }).expect(200);
       await addRule(merchant.id);
+      const menuCategory = await prisma.menuCategory.create({
+        data: { merchantId: merchant.id, name: 'Cafetería', position: 1 },
+      });
+      await prisma.menuItem.create({
+        data: {
+          merchantId: merchant.id,
+          categoryId: menuCategory.id,
+          name: 'Café',
+          position: 1,
+        },
+      });
       const pieces = [
         await createPiece(merchant.id),
         await createPiece(merchant.id, 'Vidriera'),
@@ -273,6 +284,8 @@ describe('Admin: archivar y borrar comercios (e2e)', () => {
         nfcPasswords: await prisma.pieceNfcPassword.count(byMerchant),
         rules: await prisma.rewardRule.count(byMerchant),
         profiles: await prisma.merchantProfile.count(byMerchant),
+        menuCategories: await prisma.menuCategory.count(byMerchant),
+        menuItems: await prisma.menuItem.count(byMerchant),
         staff: await prisma.staffMembership.count(byMerchant),
         audit: await prisma.auditEvent.count(byMerchant),
       }).toEqual({
@@ -281,6 +294,8 @@ describe('Admin: archivar y borrar comercios (e2e)', () => {
         nfcPasswords: 0,
         rules: 0,
         profiles: 0,
+        menuCategories: 0,
+        menuItems: 0,
         staff: 0,
         audit: 0,
       });

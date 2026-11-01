@@ -16,6 +16,8 @@ const SCOPED_BY_MERCHANT_ID = new Set([
   'Stamp',
   'Redemption',
   'AuditEvent',
+  'MenuCategory',
+  'MenuItem',
 ]);
 
 const MERCHANT_OPERATIONS = new Set([...READ_OPERATIONS, 'update']);

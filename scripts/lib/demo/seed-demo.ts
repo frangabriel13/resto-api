@@ -11,6 +11,7 @@ import {
 import {
   DEMO_CUSTOMERS,
   DEMO_EMPLOYEE_EMAIL,
+  DEMO_MENU,
   DEMO_MERCHANT,
   DEMO_MERCHANT_SLUG,
   DEMO_OWNER_EMAIL,
@@ -110,6 +111,7 @@ async function deleteMerchantData(tx: Tx, merchantId: string) {
   await tx.rewardRule.deleteMany(byMerchant);
   await tx.auditEvent.deleteMany(byMerchant);
   await tx.merchantProfile.deleteMany(byMerchant);
+  await tx.menuCategory.deleteMany(byMerchant);
   await tx.merchant.delete({ where: { id: merchantId } });
 }
 
@@ -126,6 +128,19 @@ async function createClub(
   const piece = await tx.piece.create({
     data: { merchantId, publicCode: DEMO_PIECE_CODE, label: 'Mostrador' },
   });
+  for (const [index, { name, items }] of DEMO_MENU.entries()) {
+    const category = await tx.menuCategory.create({
+      data: { merchantId, name, position: index + 1 },
+    });
+    await tx.menuItem.createMany({
+      data: items.map((item, itemIndex) => ({
+        ...item,
+        merchantId,
+        categoryId: category.id,
+        position: itemIndex + 1,
+      })),
+    });
+  }
   const staff = { tx, merchantId, passwordHash };
   const ownerId = await createStaff(
     staff,

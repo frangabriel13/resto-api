@@ -15,6 +15,8 @@ const WITH_RLS = [
   'audit_events',
   'customers',
   'memberships',
+  'menu_categories',
+  'menu_items',
   'merchant_profiles',
   'merchants',
   'piece_nfc_passwords',
@@ -237,6 +239,34 @@ describe('Row Level Security (e2e)', () => {
         );
       }
     }
+  });
+
+  it('la carta se ve y se escribe solo desde su comercio', async () => {
+    const category = await admin.menuCategory.create({
+      data: { merchantId: a.merchantId, name: 'Cafetería', position: 1 },
+    });
+    await admin.menuItem.create({
+      data: {
+        merchantId: a.merchantId,
+        categoryId: category.id,
+        name: 'Café',
+        position: 1,
+      },
+    });
+
+    const counts = (tx: Prisma.TransactionClient) =>
+      Promise.all([tx.menuCategory.count(), tx.menuItem.count()]);
+    expect(await counts(runtime)).toEqual([0, 0]);
+    expect(await as('app.merchant_id', a.merchantId, counts)).toEqual([1, 1]);
+    expect(await as('app.merchant_id', b.merchantId, counts)).toEqual([0, 0]);
+    expect(await as('app.customer_id', a.customerId, counts)).toEqual([0, 0]);
+    await expect(
+      as('app.merchant_id', b.merchantId, (tx) =>
+        tx.menuCategory.create({
+          data: { merchantId: a.merchantId, name: 'Robada', position: 2 },
+        }),
+      ),
+    ).rejects.toThrow(RLS_VIOLATION);
   });
 
   it('un usuario de staff ve sus comercios y nada del dominio', async () => {

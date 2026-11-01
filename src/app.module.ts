@@ -19,6 +19,7 @@ import { EmailModule } from './modules/email/email.module.js';
 import { ExportModule } from './modules/export/export.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { MembershipsModule } from './modules/memberships/memberships.module.js';
+import { MenuModule } from './modules/menu/menu.module.js';
 import { PanelCustomersModule } from './modules/panel-customers/panel-customers.module.js';
 import { PiecesModule } from './modules/pieces/pieces.module.js';
 import { RedemptionsModule } from './modules/redemptions/redemptions.module.js';
@@ -49,6 +50,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     AuthModule,
     AdminModule,
     RewardRulesModule,
+    MenuModule,
     PiecesModule,
     CustomersModule,
     MembershipsModule,
