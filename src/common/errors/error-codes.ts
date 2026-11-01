@@ -179,6 +179,10 @@ export const errorCatalog = {
     status: HttpStatus.BAD_GATEWAY,
     message: 'No se pudo guardar la imagen. Probá de nuevo.',
   },
+  MENU_LIMIT_REACHED: {
+    status: HttpStatus.CONFLICT,
+    message: 'La carta llegó al máximo de categorías o de ítems.',
+  },
   MERCHANT_HAS_CUSTOMERS: {
     status: HttpStatus.CONFLICT,
     message:

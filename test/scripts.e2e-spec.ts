@@ -61,6 +61,9 @@ describe('Scripts de datos (e2e)', () => {
         { version: 1, active: true, stampsRequired: 8 },
       ]);
       expect(merchant.pieces).toHaveLength(1);
+      expect(
+        await prisma.menuItem.count({ where: { merchantId: merchant.id } }),
+      ).toBe(4);
       const [piece] = merchant.pieces;
       expect(
         decryptNfcPassword(

@@ -89,6 +89,7 @@ describe('Entrada pública por pieza (e2e)', () => {
         googleReviewUrl: 'https://g.page/r/cafe',
       },
       page: { wifi: null, socials: [] },
+      menu: null,
       rewardRule: {
         stampsRequired: 8,
         rewardDescription: 'Un café de regalo',

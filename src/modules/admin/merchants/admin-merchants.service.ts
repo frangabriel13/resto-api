@@ -25,7 +25,7 @@ import type {
   MerchantSummary,
   UpdateMerchantBody,
 } from './admin-merchants.schemas.js';
-import { lockMerchant } from './lock-merchant.js';
+import { lockMerchant } from '../../merchants/lock-merchant.js';
 import {
   applyProfileChanges,
   toProfileData,

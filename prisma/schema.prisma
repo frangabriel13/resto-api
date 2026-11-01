@@ -47,6 +47,8 @@ model Merchant {
   tiktokUsername    String?       @map("tiktok_username")
   whatsappPhoneE164 String?       @map("whatsapp_phone_e164")
   facebookUrl       String?       @map("facebook_url")
+  // El nombre del botón de la carta, de una lista fija.
+  menuLabel         MenuLabel     @default(CARTA) @map("menu_label")
   createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -59,8 +61,49 @@ model Merchant {
   auditEvents      AuditEvent[]
   profile          MerchantProfile?
   pieceScans       PieceScan[]
+  menuCategories   MenuCategory[]
 
   @@map("merchants")
+}
+
+// La carta: categorías con ítems, solo para ver. `position` da el orden a mano
+// (no es consecutivo: al borrar quedan huecos).
+model MenuCategory {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  merchantId String   @map("merchant_id") @db.Uuid
+  name       String
+  visible    Boolean  @default(true)
+  position   Int
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  merchant Merchant   @relation(fields: [merchantId], references: [id])
+  items    MenuItem[]
+
+  @@unique([id, merchantId])
+  @@index([merchantId, position])
+  @@map("menu_categories")
+}
+
+model MenuItem {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  merchantId  String   @map("merchant_id") @db.Uuid
+  categoryId  String   @map("category_id") @db.Uuid
+  name        String
+  description String?
+  // Pesos enteros; `priceFrom` lo muestra como "desde" (solo con precio: CHECK).
+  price       Int?
+  priceFrom   Boolean  @default(false) @map("price_from")
+  visible     Boolean  @default(true)
+  position    Int
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  category MenuCategory @relation(fields: [categoryId, merchantId], references: [id, merchantId], onDelete: Cascade)
+
+  @@index([categoryId, position])
+  @@index([merchantId])
+  @@map("menu_items")
 }
 
 // Ficha comercial: solo para el admin (cerrada para resto_app, ver la migración).
@@ -259,6 +302,16 @@ enum PieceType {
   NFC_QR
 
   @@map("piece_type")
+}
+
+enum MenuLabel {
+  CARTA
+  MENU
+  SERVICES
+  PRODUCTS
+  PRICE_LIST
+
+  @@map("menu_label")
 }
 
 // Los tipos que entiende el QR estándar de Wi-Fi.

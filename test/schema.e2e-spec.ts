@@ -47,6 +47,8 @@ describe('Schema de la base (e2e)', () => {
         'customer_sessions',
         'customers',
         'memberships',
+        'menu_categories',
+        'menu_items',
         'merchant_profiles',
         'merchants',
         'otp_challenges',
@@ -351,6 +353,33 @@ describe('Schema de la base (e2e)', () => {
         wifiSecurity: 'WEP',
         wifiPassword: 'clave',
       });
+    });
+
+    it('un ítem de la carta tiene precio positivo, "desde" solo con precio y su categoría en el mismo comercio', async () => {
+      const category = await prisma.menuCategory.create({
+        data: { merchantId: ids.merchantA, name: 'Cafetería', position: 1 },
+      });
+      const item = (data: Record<string, unknown>) =>
+        prisma.menuItem.create({
+          data: {
+            merchantId: ids.merchantA,
+            categoryId: category.id,
+            name: 'Café',
+            position: 1,
+            ...data,
+          },
+        });
+
+      await expectRejected(item({ price: 0 }), 'menu_items_price_check');
+      await expectRejected(
+        item({ priceFrom: true }),
+        'menu_items_price_from_check',
+      );
+      await expectRejected(
+        item({ merchantId: ids.merchantB }),
+        'menu_items_category_id_merchant_id_fkey',
+      );
+      await item({ price: 1500, priceFrom: true });
     });
 
     it('una pieza tiene solo el campo de su destino', async () => {

@@ -5,7 +5,7 @@ import { PrismaAdminService } from '../../../prisma/prisma-admin.service.js';
 import { AuditService } from '../../audit/audit.service.js';
 import { anonymizedCustomerData } from '../../customers/anonymized-customer.js';
 import type { DeletionSummary } from './admin-merchants.schemas.js';
-import { lockMerchant } from './lock-merchant.js';
+import { lockMerchant } from '../../merchants/lock-merchant.js';
 
 type Tx = Prisma.TransactionClient;
 type Account = { id: string; phoneE164: string | null };
@@ -150,6 +150,8 @@ async function deleteMerchantData(
   await tx.piece.deleteMany(byMerchant);
   await tx.rewardRule.deleteMany(byMerchant);
   await tx.merchantProfile.deleteMany(byMerchant);
+  // Los ítems se van en cascada.
+  await tx.menuCategory.deleteMany(byMerchant);
   await deleteStaff(tx, merchantId, staffIds);
   await tx.auditEvent.deleteMany(byMerchant);
   await tx.merchant.delete({ where: { id: merchantId } });

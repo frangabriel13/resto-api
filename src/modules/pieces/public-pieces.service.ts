@@ -1,17 +1,23 @@
 import { Injectable } from '@nestjs/common';
 import { AppException } from '../../common/errors/app.exception.js';
 import type {
+  MenuCategory,
+  MenuItem,
   Merchant,
   Piece,
   RewardRule,
 } from '../../generated/prisma/client.js';
 import { PrismaAdminService } from '../../prisma/prisma-admin.service.js';
+import { publicMenuInclude, toPublicMenu } from '../menu/public-menu.js';
 import { toPublicPage } from '../merchants/merchant-page.js';
 import { redirectUrl, toDestination } from './piece-destination.js';
 import type { PublicPiece } from './public-pieces.schemas.js';
 
 type PieceWithClub = Piece & {
-  merchant: Merchant & { rewardRules: RewardRule[] };
+  merchant: Merchant & {
+    rewardRules: RewardRule[];
+    menuCategories: (MenuCategory & { items: MenuItem[] })[];
+  };
 };
 
 @Injectable()
@@ -42,7 +48,10 @@ export class PublicPiecesService {
       where: { publicCode },
       include: {
         merchant: {
-          include: { rewardRules: { where: { active: true } } },
+          include: {
+            rewardRules: { where: { active: true } },
+            menuCategories: publicMenuInclude,
+          },
         },
       },
     });
@@ -74,6 +83,7 @@ function toPublicPiece(piece: PieceWithClub): PublicPiece {
       googleReviewUrl: merchant.googleReviewUrl,
     },
     page: toPublicPage(merchant),
+    menu: toPublicMenu(merchant.menuLabel, merchant.menuCategories),
     rewardRule: rule
       ? {
           stampsRequired: rule.stampsRequired,
