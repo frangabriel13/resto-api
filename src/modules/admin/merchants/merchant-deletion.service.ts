@@ -4,6 +4,7 @@ import type { Prisma } from '../../../generated/prisma/client.js';
 import { PrismaAdminService } from '../../../prisma/prisma-admin.service.js';
 import { AuditService } from '../../audit/audit.service.js';
 import { anonymizedCustomerData } from '../../customers/anonymized-customer.js';
+import { ImagesService } from '../../images/images.service.js';
 import type { DeletionSummary } from './admin-merchants.schemas.js';
 import { lockMerchant } from '../../merchants/lock-merchant.js';
 
@@ -18,6 +19,7 @@ export class MerchantDeletionService {
   constructor(
     private readonly prisma: PrismaAdminService,
     private readonly audit: AuditService,
+    private readonly images: ImagesService,
   ) {}
 
   async summary(id: string): Promise<DeletionSummary> {
@@ -30,12 +32,13 @@ export class MerchantDeletionService {
     });
   }
 
+  // Las imágenes se borran del bucket recién después del commit: si la
+  // transacción falla, el comercio sigue con las suyas.
   async delete(adminId: string, id: string, confirmName: string) {
-    await this.prisma.$transaction(async (tx) => {
+    const { logoUrl, coverUrl } = await this.prisma.$transaction(async (tx) => {
       if (!(await lockMerchant(tx, id))) throw new AppException('NOT_FOUND');
-      const { name, slug, archivedAt } = await tx.merchant.findUniqueOrThrow({
-        where: { id },
-      });
+      const merchant = await tx.merchant.findUniqueOrThrow({ where: { id } });
+      const { name, slug, archivedAt } = merchant;
       assertConfirmed(name, confirmName);
       await lockCustomers(tx, id);
       const plan = await planDeletion(tx, id);
@@ -50,7 +53,10 @@ export class MerchantDeletionService {
         entityId: id,
         payload: { name, slug, ...plan.counts },
       });
+      return merchant;
     });
+    await this.images.discard(logoUrl);
+    await this.images.discard(coverUrl);
   }
 }
 

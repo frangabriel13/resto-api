@@ -3,7 +3,6 @@ import { MerchantStatus } from '../../../generated/prisma/client.js';
 import {
   colorSchema,
   googleReviewUrlSchema,
-  httpsUrlSchema,
   stampCooldownSchema,
 } from '../../merchants/merchant-fields.js';
 import {
@@ -21,7 +20,6 @@ const slugSchema = z.string().min(3).max(SLUG_MAX_LENGTH).regex(SLUG_PATTERN);
 const editableFields = {
   name: z.string().trim().min(1).max(100),
   slug: slugSchema,
-  logoUrl: httpsUrlSchema.nullable(),
   primaryColor: colorSchema.nullable(),
   secondaryColor: colorSchema.nullable(),
   googleReviewUrl: googleReviewUrlSchema.nullable(),

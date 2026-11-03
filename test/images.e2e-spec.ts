@@ -301,6 +301,79 @@ describe('Imágenes: logo y portada (e2e)', () => {
     });
   });
 
+  describe('al borrar el comercio', () => {
+    const removeMerchant = (confirmName: string) =>
+      request(app.getHttpServer())
+        .delete(`/admin/merchants/${cafe.merchantId}`)
+        .query({ confirmName })
+        .set('Cookie', admin);
+    const uploadBoth = async () => {
+      await upload(imagePath('logo'), admin, fakePng()).expect(200);
+      await upload(imagePath('cover'), admin, fakePng()).expect(200);
+    };
+
+    it('borra su logo y su portada del bucket, y solo esos', async () => {
+      const other = await createClub(prisma, 'heladeria', []);
+      await upload(imagePath('cover', other.merchantId), admin, fakePng());
+      await uploadBoth();
+      expect(storage.keys()).toHaveLength(3);
+
+      await removeMerchant('cafe').expect(204);
+
+      expect(storage.keys()).toEqual([
+        expect.stringContaining(`merchants/${other.merchantId}/cover-`),
+      ]);
+      expect(reported).toEqual([]);
+    });
+
+    it('sin imágenes, o con una que no es del bucket, se borra igual', async () => {
+      await prisma.merchant.update({
+        where: { id: cafe.merchantId },
+        data: { logoUrl: 'https://cdn.com/logo.png' },
+      });
+
+      await removeMerchant('cafe').expect(204);
+
+      expect(reported).toEqual([]);
+    });
+
+    it('si falla el borrado en el bucket, se reporta y el comercio se borra igual', async () => {
+      await uploadBoth();
+      storage.failingDelete = true;
+
+      await removeMerchant('cafe').expect(204);
+
+      expect(
+        await prisma.merchant.findUnique({ where: { id: cafe.merchantId } }),
+      ).toBeNull();
+      expect(reported).toHaveLength(2);
+      expect(storage.keys()).toHaveLength(2);
+    });
+
+    it('si el borrado se rechaza, las imágenes quedan', async () => {
+      await uploadBoth();
+      const rule = await prisma.rewardRule.findFirstOrThrow({
+        where: { merchantId: cafe.merchantId },
+      });
+      const customer = await prisma.customer.create({
+        data: { name: 'Ana', phoneE164: '+5491123456789' },
+      });
+      await prisma.membership.create({
+        data: {
+          merchantId: cafe.merchantId,
+          customerId: customer.id,
+          currentCycleRewardRuleId: rule.id,
+        },
+      });
+
+      await removeMerchant('otro nombre').expect(400);
+      await removeMerchant('cafe').expect(409);
+
+      expect(storage.keys()).toHaveLength(2);
+      expect((await merchant()).coverUrl).not.toBeNull();
+    });
+  });
+
   it('lo que espera al commit no corre si la transacción del request falla', async () => {
     const tenant = app.get(TenantContext);
     const ran: string[] = [];

@@ -81,7 +81,6 @@ describe('Admin: comercios y piezas (e2e)', () => {
     it('valida los datos y rechaza un slug repetido', async () => {
       for (const body of [
         { name: 'Café', primaryColor: 'rojo' },
-        { name: 'Café', logoUrl: 'http://logo.com/a.png' },
         { name: 'Café', googleReviewUrl: 'https://otro-sitio.com/resena' },
         { name: 'Café', slug: 'Con Mayúsculas' },
         { name: 'Café', stampCooldownMinutes: -1 },
@@ -162,25 +161,52 @@ describe('Admin: comercios y piezas (e2e)', () => {
     });
 
     it('edita los datos del comercio', async () => {
-      const merchant = await createMerchant({
-        name: 'Café',
-        logoUrl: 'https://logo.com/a.png',
-      });
+      const merchant = await createMerchant({ name: 'Café' });
 
       const res = await send('patch', `/admin/merchants/${merchant.id}`, {
         name: 'Café Nuevo',
         primaryColor: '#112233',
         stampCooldownMinutes: 30,
-        logoUrl: null,
       }).expect(200);
 
       expect(res.body).toMatchObject({
         name: 'Café Nuevo',
         primaryColor: '#112233',
         stampCooldownMinutes: 30,
-        logoUrl: null,
         slug: 'cafe',
       });
+    });
+
+    it('el logo no se carga con una URL, y el que ya estaba no se toca', async () => {
+      const created = await createMerchant({
+        name: 'Café',
+        logoUrl: 'https://otro-sitio.com/logo.png',
+      });
+      expect(created.logoUrl).toBeNull();
+
+      const saved = 'https://cdn.com/logo-viejo.png';
+      await prisma.merchant.update({
+        where: { id: created.id },
+        data: { logoUrl: saved },
+      });
+      const path = `/admin/merchants/${created.id}`;
+      for (const logoUrl of ['https://otro-sitio.com/logo.png', null]) {
+        const patched = await send('patch', path, {
+          name: 'Café Nuevo',
+          logoUrl,
+        }).expect(200);
+        expect(patched.body.logoUrl).toBe(saved);
+      }
+
+      const detail = await send('get', path).expect(200);
+      expect(detail.body.logoUrl).toBe(saved);
+      expect(
+        (
+          await prisma.auditEvent.findMany({
+            where: { action: 'merchant.created' },
+          })
+        )[0]?.payload,
+      ).not.toHaveProperty('logoUrl');
     });
 
     it('el slug solo se cambia mientras está en preparación', async () => {
