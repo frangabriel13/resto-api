@@ -3,8 +3,6 @@ import { z } from 'zod';
 // Lo que muestra la tarjeta del cliente: lo editan el admin y el dueño.
 export const colorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
-export const httpsUrlSchema = z.url({ protocol: /^https$/ }).max(500);
-
 // Se muestra a todos los clientes: solo Google, para que no sirva para
 // mandarlos a otro sitio.
 export const GOOGLE_REVIEW_HOST =
